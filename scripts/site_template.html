@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Василий Попков</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Василий Попков — интеллектуальные триллеры, историко-детективные романы, рассказы и стихи.">
@@ -133,6 +138,8 @@ dialog .close{float:right;background:none;border:0;font-size:22px;line-height:1;
 @media (max-width:820px){.hero .wrap{grid-template-columns:1fr}.hero{padding-block:36px 48px}}
 @media (prefers-reduced-motion:reduce){.book .cover img{transition:none}}
 </style>
+</head>
+<body>
 
 <nav class="top"><div class="wrap">
   <a class="who" href="#top">Василий Попков</a>
@@ -350,3 +357,5 @@ dialog .close{float:right;background:none;border:0;font-size:22px;line-height:1;
   lf.addEventListener('submit',async e=>{e.preventDefault();try{await post('/api/lead',formData(lf));lf.reset();lf.kind.value=document.querySelector('.seg [aria-pressed=true]').dataset.k;say(lf,'Спасибо! Сообщение отправлено автору.',true)}catch(err){say(lf,err.message,false)}});
 })();
 </script>
+</body>
+</html>
