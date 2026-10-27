@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>CRM · Василий Попков</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prata&family=PT+Mono&family=PT+Sans:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#ECEDE6;--paper:#F7F7F2;--ink:#1C2430;--muted:#5A6270;--rule:#C9CBC0;--stamp:#5B4A8B;--brass:#8C6D24;
+  --ok:#2E7D4F;--warn:#9A6A00;--bad:#B3261E;
+  --display:"Prata",Georgia,serif;--ui:"PT Sans",system-ui,sans-serif;--mono:"PT Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#141922;--paper:#1B212C;--ink:#E4E3DA;--muted:#9CA3AF;--rule:#2E3644;--stamp:#A898DA;--brass:#D2B266;--ok:#6CC08F;--warn:#E3B45A;--bad:#F08A80;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--ui)}
+.wrap{max-width:1200px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px))}
+header{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;justify-content:space-between;padding-block:16px;border-bottom:1px solid var(--rule);margin-bottom:22px}
+header h1{font:400 22px var(--display);margin:0}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav button,.btn,.chip{font:13px var(--mono);border:1px solid var(--rule);background:transparent;color:var(--ink);padding:7px 11px;border-radius:2px;cursor:pointer}
+nav button[aria-current="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.small{padding:4px 8px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.badge{display:inline-block;font:11.5px var(--mono);padding:1px 7px;border-radius:2px;border:1px solid currentColor;white-space:nowrap}
+.s-new{color:var(--stamp)}.s-waiting{color:var(--warn)}.s-paid{color:var(--brass)}.s-sent{color:var(--ok)}.s-cancelled{color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:22px}
+.kpi{background:var(--paper);border:1px solid var(--rule);padding:14px 16px}
+.kpi b{display:block;font:400 30px var(--display);font-variant-numeric:tabular-nums}
+.kpi span{font:12px var(--mono);color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;margin-bottom:18px}
+.panel{background:var(--paper);border:1px solid var(--rule);padding:16px;min-width:0}
+.panel h2{font:400 19px var(--display);margin:0 0 10px}
+.panel .sub{font:12px var(--mono);color:var(--muted);margin:-6px 0 10px}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font:11px var(--mono)}
+.chart .bar{fill:var(--ink)}
+.chart .bar:hover{fill:var(--stamp)}
+.chart .grid{stroke:var(--rule);stroke-width:1}
+.hbar{display:grid;grid-template-columns:minmax(90px,30%) 1fr auto;gap:8px;align-items:center;margin:5px 0;font-size:14px}
+.hbar i{display:block;height:12px;background:var(--ink);border-radius:0 3px 3px 0;min-width:2px}
+.hbar em{font:12px var(--mono);font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;background:var(--paper);border:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font:12px var(--mono);color:var(--muted);font-weight:400;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.tools .grow{flex:1}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:2px;padding:7px 9px}
+textarea{width:100%;min-height:90px}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:3px;font-size:14px;max-width:calc(100vw - 32px)}
+.login{max-width:360px;margin:16vh auto;background:var(--paper);border:1px solid var(--rule);padding:24px}
+.login h1{font:400 26px var(--display);margin:0 0 14px}
+.login input{width:100%;margin-bottom:12px}
+.warnbox{border:1px solid var(--warn);color:var(--ink);padding:10px 14px;margin-bottom:16px;background:var(--paper)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px}
+.form label{display:flex;flex-direction:column;gap:3px;font:12px var(--mono);color:var(--muted)}
+.linkbox{font:12px var(--mono);word-break:break-all;background:var(--bg);padding:6px 8px;border:1px dashed var(--rule);margin-top:6px}
+:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rub=n=>(Number(n)||0).toLocaleString('ru-RU')+' ₽';
+const dt=s=>s?new Date(s.replace(' ','T')+(s.includes('T')?'':'Z')).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+const STATUS={new:'Новая',waiting:'Ждёт оплаты',paid:'Оплачена',sent:'Книга отправлена',cancelled:'Отменена'};
+const STAGE={contact:'Первый контакт',talks:'Переговоры',agreed:'Договорились',active:'Работаем',paused:'Пауза'};
+const KIND={'издательство':1,'библиотека':1,'конкурс':1,'магазин':1,'СМИ':1,'другое':1};
+async function api(path,data,method){const r=await fetch('/api/crm/'+path,{method:method||(data?'POST':'GET'),headers:{'content-type':'application/json'},body:data?JSON.stringify(data):undefined,credentials:'same-origin'});
+  if(r.status===401){login();throw new Error('Нужно войти')}const j=await r.json().catch(()=>({ok:false,error:'Ошибка сервера'}));if(j.ok===false)throw new Error(j.error||'Ошибка');return j}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
+async function copy(t){try{await navigator.clipboard.writeText(t);toast('Ссылка скопирована')}catch(e){prompt?.('Скопируйте ссылку',t)}}
+
+function login(){
+  $('#app').innerHTML=`<form class="login" id="lf"><h1>CRM автора</h1><label class="small muted" for="pw">Пароль</label><input id="pw" type="password" autocomplete="current-password" required><button class="btn primary" type="submit">Войти</button><p class="small" id="lerr" style="color:var(--bad)"></p></form>`;
+  $('#lf').onsubmit=async e=>{e.preventDefault();try{await api('login',{password:$('#pw').value});start()}catch(err){$('#lerr').textContent=err.message}};
+}
+
+const TABS=[['overview','Обзор'],['orders','Заявки'],['leads','Обращения'],['subs','Подписчики'],['partners','Партнёры'],['books','Каталог']];
+let tab=(location.hash||'#overview').slice(1);
+function start(){
+  $('#app').innerHTML=`<div class="wrap"><header><h1>CRM · Василий Попков</h1><nav>${TABS.map(([k,t])=>`<button type="button" data-tab="${k}">${t}</button>`).join('')}<button type="button" id="out">Выйти</button></nav></header><main id="view"></main></div>`;
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
+  $('#out').onclick=async()=>{await api('logout',{});login()};
+  window.onhashchange=()=>{tab=(location.hash||'#overview').slice(1);render()};
+  render();
+}
+function render(){
+  document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===tab?'true':'false'));
+  ({overview,orders,leads,subs,partners,books}[tab]||overview)().catch(e=>$('#view').innerHTML=`<p>${esc(e.message)}</p>`);
+}
+
+// ---------- Обзор
+function barChart(days,vals,label){
+  const W=640,H=180,P={l:34,r:8,t:10,b:22},w=W-P.l-P.r,h=H-P.t-P.b;
+  const max=Math.max(1,...vals),nice=max<=5?5:Math.ceil(max/5)*5,step=w/vals.length,bw=Math.max(2,step-2);
+  const ticks=[0,nice/2,nice];let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">`;
+  ticks.forEach(t=>{const y=P.t+h-h*t/nice;s+=`<line class="grid" x1="${P.l}" x2="${W-P.r}" y1="${y}" y2="${y}"/><text x="${P.l-6}" y="${y+4}" text-anchor="end">${t}</text>`});
+  vals.forEach((v,i)=>{const bh=h*v/nice,x=P.l+i*step+1,y=P.t+h-bh;s+=`<rect class="bar" x="${x}" y="${y}" width="${bw}" height="${Math.max(bh,v?2:0)}" rx="${Math.min(4,bw/2)}"><title>${days[i].slice(8,10)}.${days[i].slice(5,7)}: ${v}</title></rect>`});
+  const lab=[0,Math.floor(vals.length/2),vals.length-1];lab.forEach(i=>{s+=`<text x="${P.l+i*step+step/2}" y="${H-6}" text-anchor="middle">${days[i].slice(8,10)}.${days[i].slice(5,7)}</text>`});
+  return s+'</svg>';
+}
+function hbars(rows,key='target'){const max=Math.max(1,...rows.map(r=>r.n));return rows.length?rows.map(r=>`<div class="hbar"><span>${esc(r[key]||'—')}</span><i style="width:${(r.n/max*100).toFixed(1)}%"></i><em>${r.n}</em></div>`).join(''):'<p class="muted small">Пока нет данных</p>'}
+async function overview(){
+  const days=Number(sessionStorage.getItem('days')||30);
+  const d=await api('summary?days='+days);
+  const list=[];for(let i=days-1;i>=0;i--)list.push(new Date(Date.now()-i*864e5).toISOString().slice(0,10));
+  const by=t=>list.map(x=>(d.series.find(r=>r.day===x&&r.type===t)||{n:0}).n);
+  const sum=a=>a.reduce((x,y)=>x+y,0);
+  const views=by('view'),orders=by('order'),subs=by('subscribe');
+  const rev=d.sales.reduce((a,b)=>a+(b.revenue||0),0),sold=d.sales.reduce((a,b)=>a+(b.sold||0),0),ord=sum(orders);
+  const conv=sum(views)?(ord/sum(views)*100).toFixed(1)+' %':'—';
+  $('#view').innerHTML=`
+  ${d.botLinked?'':'<div class="warnbox">Уведомления в Telegram ещё не подключены: напишите боту <b>/admin пароль-от-CRM</b>.</div>'}
+  <div class="tools"><span class="muted small">Период:</span>${[7,30,90,365].map(n=>`<button class="chip btn" data-days="${n}" ${n===days?'style="background:var(--ink);color:var(--paper)"':''}>${n===365?'год':n+' дн.'}</button>`).join('')}</div>
+  <div class="kpis">
+    <div class="kpi"><b>${sum(views).toLocaleString('ru-RU')}</b><span>просмотров сайта</span></div>
+    <div class="kpi"><b>${ord}</b><span>заявок на EPUB · конверсия ${conv}</span></div>
+    <div class="kpi"><b>${rub(rev)}</b><span>выручка · продано ${sold}</span></div>
+    <div class="kpi"><b>${d.counts.open_orders}</b><span>заявок ждут действия</span></div>
+    <div class="kpi"><b>${d.counts.subscribers}</b><span>подписчиков · +${sum(subs)} за период</span></div>
+    <div class="kpi"><b>${d.counts.new_leads}</b><span>новых обращений</span></div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h2>Просмотры сайта</h2><p class="sub">по дням</p>${barChart(list,views,'Просмотры по дням')}</div>
+    <div class="panel"><h2>Заявки на EPUB</h2><p class="sub">по дням, сайт и бот</p>${barChart(list,orders,'Заявки по дням')}</div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h2>Переходы в магазины</h2>${hbars(d.shops)}</div>
+    <div class="panel"><h2>Интерес к книгам</h2><p class="sub">открытия «Купить EPUB» и переходы на Jaaj.Club</p>${hbars(d.books.map(r=>({...r,target:bookName(r.target)})))}</div>
+  </div>
+  <div class="panel"><h2>Продажи по книгам</h2><div class="tablewrap" style="border:0"><table><thead><tr><th>Книга</th><th class="num">Заявок</th><th class="num">Продано</th><th class="num">Выручка</th></tr></thead><tbody>
+  ${d.sales.map(s=>`<tr><td>${esc(s.title)}</td><td class="num">${s.orders||0}</td><td class="num">${s.sold||0}</td><td class="num">${rub(s.revenue)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  document.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('days',b.dataset.days);render()});
+}
+const JAAJ={445:'Петля Козырева',435:'Инкогнито',459:'Люди из леса',458:'Конец белого лотоса',457:'Общество посвящённых',455:'Душа нараспашку',442:'Протокол «Мёртвая петля»',441:'Сезон дождей для двоих',439:'Зимовка бабочек',438:'Чемодан без ручки',434:'Свет, который считали вечным',432:'Золото империи',431:'Морская звезда',427:'Исповедь',426:'Тайна янтарной комнаты',424:'Эра равновесия',421:'Сертификат гениальности',420:'Крушение империи',418:'Тайна Либереи',417:'Источник жизни',416:'Тридцать шестая буква',415:'Хранитель тени',414:'Кристалл счастья',413:'Чудь белоглазая',zoloto:'Золото империи (EPUB)',libereya:'Либерея (EPUB)',morskaya:'Морская звезда (EPUB)',inkognito:'Инкогнито (EPUB)',kristall:'Кристалл счастья (EPUB)',sertifikat:'Сертификат гениальности (EPUB)',ispoved:'Исповедь (EPUB)'};
+const bookName=t=>JAAJ[t]||t;
+
+// ---------- Заявки
+let ordFilter='open';
+async function orders(){
+  const {items}=await api('orders');const {items:bk}=await api('books');
+  const show=items.filter(o=>ordFilter==='all'||(ordFilter==='open'?['new','waiting','paid'].includes(o.status):o.status===ordFilter));
+  $('#view').innerHTML=`<div class="tools">${[['open','В работе'],['new','Новые'],['waiting','Ждут оплаты'],['sent','Отправлены'],['cancelled','Отменены'],['all','Все']].map(([k,t])=>`<button class="btn chip" data-f="${k}" ${k===ordFilter?'style="background:var(--ink);color:var(--paper)"':''}>${t} (${k==='all'?items.length:items.filter(o=>k==='open'?['new','waiting','paid'].includes(o.status):o.status===k).length})</button>`).join('')}<span class="grow"></span><a class="btn" href="/api/crm/export?t=orders">CSV</a><button class="btn" id="addOrd">Добавить заявку</button></div>
+  <div id="newOrd" hidden class="panel" style="margin-bottom:12px"><div class="form"><label>Книга<select id="no-book">${bk.map(b=>`<option value="${b.id}">${esc(b.title)} — ${rub(b.price)}</option>`).join('')}</select></label><label>Имя<input id="no-name"></label><label>E-mail<input id="no-email"></label><label>Telegram<input id="no-tg" placeholder="@username"></label></div><button class="btn primary" id="no-save">Создать</button></div>
+  <div class="tablewrap"><table><thead><tr><th>№</th><th>Дата</th><th>Книга</th><th>Покупатель</th><th>Статус</th><th>Действия</th></tr></thead><tbody>
+  ${show.map(o=>`<tr data-id="${o.id}"><td>${o.id}</td><td class="small">${dt(o.created)}<br><span class="muted">${o.source==='bot'?'бот':o.source==='crm'?'CRM':'сайт'}</span></td><td>${esc(o.title)}<br><span class="muted small">${rub(o.price)}</span></td>
+  <td>${esc(o.name||'')}<br><span class="small">${o.email?`<a href="mailto:${esc(o.email)}">${esc(o.email)}</a>`:''} ${o.telegram?`<a href="https://t.me/${esc(o.telegram.slice(1))}" target="_blank" rel="noopener">${esc(o.telegram)}</a>`:''} ${o.chat_id?'<span class="badge s-sent">в боте</span>':''}</span></td>
+  <td><span class="badge s-${o.status}">${STATUS[o.status]}</span>${o.note?`<div class="small muted">${esc(o.note)}</div>`:''}<div class="lb"></div></td>
+  <td><div class="actions">${['new','waiting'].includes(o.status)?`<button class="btn small primary" data-a="deliver">Оплачено — отправить</button>`:''}${o.status==='paid'?`<button class="btn small primary" data-a="deliver">Отправить книгу</button>`:''}${o.status==='new'?`<button class="btn small" data-a="waiting">Ждёт оплаты</button>`:''}${['paid','sent'].includes(o.status)?`<button class="btn small" data-a="link">Новая ссылка</button>`:''}${o.status==='paid'?`<button class="btn small" data-a="sent">Отправлено вручную</button>`:''}${!['cancelled','sent'].includes(o.status)?`<button class="btn small" data-a="cancelled">Отменить</button>`:''}<button class="btn small" data-a="note">Заметка</button></div></td></tr>`).join('')||'<tr><td colspan="6" class="muted">Заявок нет</td></tr>'}
+  </tbody></table></div>`;
+  document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ordFilter=b.dataset.f;render()});
+  $('#addOrd').onclick=()=>{$('#newOrd').hidden=!$('#newOrd').hidden};
+  $('#no-save').onclick=async()=>{try{await api('order',{action:'create',book:$('#no-book').value,name:$('#no-name').value,email:$('#no-email').value,telegram:$('#no-tg').value});toast('Заявка создана');render()}catch(e){toast(e.message)}};
+  document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{const tr=b.closest('tr'),id=Number(tr.dataset.id),a=b.dataset.a;b.disabled=true;
+    try{
+      if(a==='deliver'){const r=await api('order',{action:'deliver',id});if(r.delivered){toast('Книга отправлена в Telegram');render()}else{tr.querySelector('.lb').innerHTML=`<div class="linkbox">${esc(r.url)}</div><button class="btn small" data-copy>Скопировать ссылку</button> <span class="small muted">Отправьте покупателю на e-mail и отметьте «Отправлено вручную».</span>`;tr.querySelector('[data-copy]').onclick=()=>copy(r.url);toast('Оплата отмечена, ссылка готова')}}
+      else if(a==='link'){const r=await api('order',{action:'link',id});tr.querySelector('.lb').innerHTML=`<div class="linkbox">${esc(r.url)}</div><button class="btn small" data-copy>Скопировать</button>`;tr.querySelector('[data-copy]').onclick=()=>copy(r.url)}
+      else if(a==='note'){const box=tr.querySelector('.lb');box.innerHTML=`<textarea>${esc(items.find(o=>o.id===id).note||'')}</textarea><button class="btn small primary">Сохранить</button>`;box.querySelector('button').onclick=async()=>{await api('order',{action:'status',id,status:items.find(o=>o.id===id).status,note:box.querySelector('textarea').value});render()}}
+      else{await api('order',{action:'status',id,status:a});render()}
+    }catch(e){toast(e.message)}finally{b.disabled=false}});
+}
+
+// ---------- Обращения
+async function leads(){
+  const {items}=await api('leads');
+  $('#view').innerHTML=`<div class="tools"><span class="grow muted small">Вопросы читателей из бота можно ответить прямо отсюда — ответ уйдёт в Telegram.</span><a class="btn" href="/api/crm/export?t=leads">CSV</a></div>
+  <div class="tablewrap"><table><thead><tr><th>№</th><th>Дата</th><th>Тип</th><th>Кто</th><th>Сообщение</th><th>Статус</th></tr></thead><tbody>
+  ${items.map(l=>`<tr data-id="${l.id}"><td>${l.id}</td><td class="small">${dt(l.created)}</td><td>${l.kind==='partner'?'Сотрудничество':'Вопрос'}</td><td>${esc(l.name)}${l.org?`<br><span class="small">${esc(l.org)}</span>`:''}<br><span class="small muted">${esc(l.contact)}</span></td>
+  <td style="max-width:420px;white-space:pre-wrap">${esc(l.message)}${l.answer?`<div class="small muted" style="margin-top:6px">Ответ: ${esc(l.answer)}</div>`:''}${l.chat_id&&l.status==='new'?`<div class="ans" style="margin-top:8px"><textarea placeholder="Ответ читателю"></textarea><button class="btn small primary">Ответить в Telegram</button></div>`:''}</td>
+  <td><select data-st>${['new','answered','closed'].map(s=>`<option value="${s}" ${s===l.status?'selected':''}>${{new:'Новое',answered:'Отвечено',closed:'Закрыто'}[s]}</option>`).join('')}</select>${l.kind==='partner'?`<br><button class="btn small" data-topartner style="margin-top:6px">В партнёры</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">Обращений нет</td></tr>'}</tbody></table></div>`;
+  document.querySelectorAll('tr[data-id]').forEach(tr=>{const id=Number(tr.dataset.id),l=items.find(x=>x.id===id);
+    tr.querySelector('[data-st]').onchange=async e=>{await api('leads',{id,status:e.target.value});toast('Сохранено')};
+    const a=tr.querySelector('.ans button');if(a)a.onclick=async()=>{const t=tr.querySelector('.ans textarea').value.trim();if(!t)return;const r=await api('leads',{id,answer:t});toast(r.ok?'Ответ отправлен':'Не удалось отправить');render()};
+    const p=tr.querySelector('[data-topartner]');if(p)p.onclick=async()=>{await api('partners',{name:l.org||l.name,kind:'другое',contact:`${l.name}, ${l.contact}`,stage:'contact',note:l.message});await api('leads',{id,status:'answered'});toast('Добавлено в партнёры')}});
+}
+
+// ---------- Подписчики
+async function subs(){
+  const {items}=await api('subscribers');const act=items.filter(s=>s.active);
+  $('#view').innerHTML=`<div class="grid2"><div class="panel"><h2>Рассылка в Telegram</h2><p class="sub">${act.filter(s=>s.chat_id).length} подписчиков в боте</p><textarea id="bc" placeholder="Например: вышла новая книга «…» — электронная версия уже на сайте."></textarea><button class="btn primary" id="bcs" style="margin-top:8px">Отправить подписчикам бота</button></div>
+  <div class="panel"><h2>Подписчики по e-mail</h2><p class="sub">${act.filter(s=>s.email).length} адресов</p><p class="small">Выгрузите список и отправьте письмо из своей почты (в скрытой копии) или загрузите в сервис рассылок.</p><a class="btn" href="/api/crm/export?t=subscribers">Скачать CSV</a></div></div>
+  <div class="tablewrap"><table><thead><tr><th>Дата</th><th>Контакт</th><th>Откуда</th><th>Подписка</th></tr></thead><tbody>${items.map(s=>`<tr><td class="small">${dt(s.created)}</td><td>${esc(s.email||'')}${s.chat_id?` ${esc(s.name||'')} <span class="badge s-sent">бот</span>`:''}</td><td>${s.source==='bot'?'бот':'сайт'}</td><td><label class="small"><input type="checkbox" data-sid="${s.id}" ${s.active?'checked':''}> активна</label></td></tr>`).join('')||'<tr><td colspan="4" class="muted">Подписчиков пока нет</td></tr>'}</tbody></table></div>`;
+  document.querySelectorAll('[data-sid]').forEach(c=>c.onchange=async()=>{await api('subscribers',{id:Number(c.dataset.sid),active:c.checked});toast('Сохранено')});
+  $('#bcs').onclick=async()=>{const t=$('#bc').value.trim();if(!t)return;const b=$('#bcs');b.disabled=true;try{const r=await api('broadcast',{text:t});toast(`Отправлено: ${r.sent} из ${r.total}`);$('#bc').value=''}catch(e){toast(e.message)}finally{b.disabled=false}};
+}
+
+// ---------- Партнёры
+async function partners(edit){
+  const {items}=await api('partners');const e=edit||{};
+  $('#view').innerHTML=`<div class="panel" style="margin-bottom:14px"><h2>${e.id?'Изменить':'Новый партнёр'}</h2><div class="form">
+  <label>Название / имя<input id="p-name" value="${esc(e.name||'')}"></label>
+  <label>Тип<select id="p-kind">${Object.keys(KIND).map(k=>`<option ${k===e.kind?'selected':''}>${k}</option>`).join('')}</select></label>
+  <label>Контакт<input id="p-contact" value="${esc(e.contact||'')}"></label>
+  <label>Этап<select id="p-stage">${Object.entries(STAGE).map(([k,v])=>`<option value="${k}" ${k===e.stage?'selected':''}>${v}</option>`).join('')}</select></label>
+  <label>Следующий шаг<input id="p-next" value="${esc(e.next_step||'')}"></label>
+  <label>Когда<input id="p-date" type="date" value="${esc(e.next_date||'')}"></label></div>
+  <label class="small muted">Заметки<textarea id="p-note">${esc(e.note||'')}</textarea></label>
+  <div class="actions" style="margin-top:8px"><button class="btn primary" id="p-save">Сохранить</button>${e.id?'<button class="btn" id="p-cancel">Отмена</button><button class="btn" id="p-del">Удалить</button>':''}<a class="btn" href="/api/crm/export?t=partners">CSV</a></div></div>
+  <div class="tablewrap"><table><thead><tr><th>Партнёр</th><th>Тип</th><th>Этап</th><th>Следующий шаг</th><th>Контакт</th><th></th></tr></thead><tbody>
+  ${items.map(p=>{const late=p.next_date&&p.next_date<new Date().toISOString().slice(0,10);return `<tr><td>${esc(p.name)}${p.note?`<div class="small muted">${esc(p.note).slice(0,140)}</div>`:''}</td><td>${esc(p.kind||'')}</td><td>${STAGE[p.stage]||''}</td><td>${esc(p.next_step||'')}${p.next_date?`<br><span class="small" style="color:${late?'var(--bad)':'var(--muted)'}">${late?'просрочено · ':''}${p.next_date.split('-').reverse().join('.')}</span>`:''}</td><td class="small">${esc(p.contact||'')}</td><td><button class="btn small" data-edit="${p.id}">Изменить</button></td></tr>`}).join('')||'<tr><td colspan="6" class="muted">Добавьте издательства, библиотеки, конкурсы, с которыми работаете</td></tr>'}</tbody></table></div>`;
+  $('#p-save').onclick=async()=>{try{await api('partners',{id:e.id,name:$('#p-name').value,kind:$('#p-kind').value,contact:$('#p-contact').value,stage:$('#p-stage').value,next_step:$('#p-next').value,next_date:$('#p-date').value,note:$('#p-note').value});toast('Сохранено');partners()}catch(err){toast(err.message)}};
+  if(e.id){$('#p-cancel').onclick=()=>partners();$('#p-del').onclick=async()=>{await api('partner-delete',{id:e.id});toast('Удалено');partners()}}
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>partners(items.find(p=>p.id===Number(b.dataset.edit))));
+}
+
+// ---------- Каталог
+async function books(){
+  const {items}=await api('books');
+  $('#view').innerHTML=`<p class="muted small">Цены и доступность электронных книг. Изменения сразу видны на сайте и в боте.</p><div class="tablewrap"><table><thead><tr><th>Книга</th><th>Файл</th><th class="num">Цена, ₽</th><th>Продаётся</th><th></th></tr></thead><tbody>
+  ${items.map(b=>`<tr data-id="${b.id}"><td>${esc(b.title)}</td><td class="small muted">${esc(b.epub_name)}</td><td class="num"><input type="number" min="0" step="1" value="${b.price}" style="width:100px;text-align:right"></td><td><input type="checkbox" ${b.active?'checked':''}></td><td><button class="btn small primary">Сохранить</button></td></tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('tr[data-id] button').forEach(btn=>btn.onclick=async()=>{const tr=btn.closest('tr');await api('books',{id:tr.dataset.id,price:tr.querySelector('input[type=number]').value,active:tr.querySelector('input[type=checkbox]').checked});toast('Сохранено')});
+}
+
+api('summary?days=1').then(start).catch(()=>{});
+</script>
+</body>
+</html>
