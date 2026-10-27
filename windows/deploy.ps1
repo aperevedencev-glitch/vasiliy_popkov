@@ -21,8 +21,8 @@ npm install --no-fund --no-audit
 if ($LASTEXITCODE -ne 0) { throw "npm install не выполнен" }
 
 Step "Вход в Cloudflare"
-npx wrangler whoami *> $null
-if ($LASTEXITCODE -ne 0) { npx wrangler login }
+$who = (npx wrangler whoami 2>&1 | Out-String)
+if ($who -notmatch "associated with the email") { npx wrangler login }
 
 Step "Хранилище для книг (R2)"
 $r2 = (npx wrangler r2 bucket create popkov-books 2>&1 | Out-String)
@@ -66,8 +66,8 @@ npx wrangler deploy
 if ($LASTEXITCODE -ne 0) { throw "Публикация не удалась" }
 
 Step "Секреты"
-$crm = Plain (Read-Host "Придумайте пароль для CRM (символы не видны)" -AsSecureString)
-$tok = Plain (Read-Host "Вставьте токен бота от @BotFather (символы не видны)" -AsSecureString)
+$crm = Plain (Read-Host "Пароль для CRM (символы не видны)" -AsSecureString)
+$tok = Plain (Read-Host "Токен бота от @BotFather (символы не видны)" -AsSecureString)
 $hook = RandomSecret
 $crm  | npx wrangler secret put CRM_PASSWORD
 $tok  | npx wrangler secret put TG_TOKEN
