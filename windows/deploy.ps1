@@ -29,9 +29,9 @@ if (-not $env:CLOUDFLARE_API_TOKEN) {
 $who = (npx wrangler whoami 2>&1 | Out-String)
 Write-Host $who
 if ($who -match "(?i)invalid|authentication error|10000|9109") { throw "Токен не подошёл — проверьте права и попробуйте снова" }
-if (-not $env:CLOUDFLARE_ACCOUNT_ID -and $who -notmatch "[0-9a-f]{32}") {
-  $env:CLOUDFLARE_ACCOUNT_ID = (Read-Host "Account ID (dash.cloudflare.com → Workers и Pages → справа «Account ID»)").Trim()
-}
+# токену аккаунта недоступен список аккаунтов — передаём ID явно
+$m = [regex]::Match($who, "[0-9a-f]{32}")
+if ($m.Success) { $env:CLOUDFLARE_ACCOUNT_ID = $m.Value }
 
 Step "Хранилище для книг (R2)"
 $t0 = Get-Content wrangler.toml -Raw -Encoding UTF8
