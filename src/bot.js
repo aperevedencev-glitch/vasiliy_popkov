@@ -46,7 +46,7 @@ const SHOPS =
   "<b>Где читать и купить</b>\n" +
   '• <a href="https://jaaj.club/books.aspx?uid=60849">Jaaj.Club</a> — все книги\n' +
   '• <a href="https://ridero.ru/books/catalog/?q=%D0%92%D0%B0%D1%81%D0%B8%D0%BB%D0%B8%D0%B9%20%D0%9F%D0%BE%D0%BF%D0%BA%D0%BE%D0%B2">Ridero</a> — печатные книги\n' +
-  '• <a href="https://www.litres.ru/book/vasiliy-popkov-33637228/ispoved-imperii-72786178/?lfrom=23058964">Литрес</a> — скидка 10% по ссылке\n' +
+  '• <a href="https://www.litres.ru/search/?q=%D0%92%D0%B0%D1%81%D0%B8%D0%BB%D0%B8%D0%B9%20%D0%9F%D0%BE%D0%BF%D0%BA%D0%BE%D0%B2">Литрес</a> — все электронные и аудиокниги\n' +
   '• <a href="https://www.wildberries.ru/catalog/0/search.aspx?search=%D0%92%D0%B0%D1%81%D0%B8%D0%BB%D0%B8%D0%B9%20%D0%9F%D0%BE%D0%BF%D0%BA%D0%BE%D0%B2">Wildberries</a>\n' +
   '• <a href="https://proza.ru/avtor/petyavasechkin">Проза.ру</a> и <a href="https://stihi.ru/avtor/petyavasechkin">Стихи.ру</a>';
 
