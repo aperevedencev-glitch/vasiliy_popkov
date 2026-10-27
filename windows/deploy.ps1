@@ -31,6 +31,11 @@ if ($who -notmatch "(?i)account id|associated with") { Write-Host $who; throw "�
 Write-Host "Вход выполнен" -ForegroundColor Green
 
 Step "Хранилище для книг (R2)"
+$t0 = Get-Content wrangler.toml -Raw -Encoding UTF8
+if ($t0 -notmatch "r2_buckets") {
+  $t0 = $t0.TrimEnd() + "`r`n`r`n[[r2_buckets]]`r`nbinding = `"BOOKS`"`r`nbucket_name = `"popkov-books`"`r`n"
+  [IO.File]::WriteAllText((Resolve-Path wrangler.toml), $t0, (New-Object System.Text.UTF8Encoding $false))
+}
 $r2 = (npx wrangler r2 bucket create popkov-books 2>&1 | Out-String)
 Write-Host $r2
 $r2ok = ($LASTEXITCODE -eq 0) -or ($r2 -match "already exists|10004")
