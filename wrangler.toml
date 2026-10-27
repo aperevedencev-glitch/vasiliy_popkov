@@ -5,13 +5,13 @@ compatibility_date = "2024-11-01"
 assets = { directory = "./assets", binding = "ASSETS", not_found_handling = "404-page" }
 
 [vars]
-SITE_URL = "https://popkov-site.example.workers.dev"   # заменить на адрес после первого развёртывания
+SITE_URL = "https://popkov-site.a-perevedencev.workers.dev"
 BOT_USERNAME = ""                                      # имя бота без @
 
 [[d1_databases]]
 binding = "DB"
 database_name = "popkov"
-database_id = "00000000-0000-0000-0000-000000000000"  # заполнит scripts/deploy
+database_id = "d82802ab-70e3-4a04-a689-0ce688d7e272"
 
 [[r2_buckets]]
 binding = "BOOKS"

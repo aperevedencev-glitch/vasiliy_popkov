@@ -7,7 +7,11 @@ import { tg, esc, notifyAdmin } from "./telegram.js";
 const EVENTS = new Set(["view", "shop", "book", "buy_open", "poem_open"]);
 
 export default {
-  async fetch(req, env, ctx) {
+  async fetch(req, rawEnv, ctx) {
+    // секреты, заданные через «wrangler secret put» из PowerShell, приходят с переводом строки
+    const env = Object.assign({}, rawEnv);
+    for (const k of ["CRM_PASSWORD", "SESSION_SECRET", "TG_TOKEN", "TG_WEBHOOK_SECRET", "BOT_USERNAME", "SITE_URL"])
+      if (typeof env[k] === "string") env[k] = env[k].trim();
     const url = new URL(req.url);
     const p = url.pathname;
     try {
