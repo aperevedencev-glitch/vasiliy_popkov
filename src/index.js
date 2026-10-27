@@ -97,7 +97,7 @@ async function download(env, token) {
   if (new Date(d.expires) < new Date() || d.uses_left <= 0)
     return page("Срок ссылки истёк", "Напишите автору — он пришлёт новую ссылку.");
   const book = await getBook(env, d.book_id);
-  const obj = await env.BOOKS.get(book.epub_key);
+  const obj = env.BOOKS ? await env.BOOKS.get(book.epub_key) : null;
   if (!obj) return page("Файл временно недоступен", "Автор уже знает об этом и пришлёт книгу.");
   await env.DB.prepare("UPDATE downloads SET uses_left=uses_left-1 WHERE token=?").bind(token).run();
   await track(env, "download", book.id);

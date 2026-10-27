@@ -1,6 +1,6 @@
 ﻿# Развёртывание сайта писателя Василия Попкова на Cloudflare
 # Запускается из «Развернуть сайт.bat». Секреты вводятся здесь и никуда не записываются.
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"   # ошибки внешних команд проверяем по $LASTEXITCODE
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = New-Object System.Text.UTF8Encoding $false
 Set-Location (Split-Path -Parent $PSScriptRoot)
@@ -21,12 +21,20 @@ npm install --no-fund --no-audit
 if ($LASTEXITCODE -ne 0) { throw "npm install не выполнен" }
 
 Step "Вход в Cloudflare"
-npx wrangler whoami 2>$null | Out-Null
+npx wrangler whoami *> $null
 if ($LASTEXITCODE -ne 0) { npx wrangler login }
 
 Step "Хранилище для книг (R2)"
-npx wrangler r2 bucket create popkov-books 2>&1 | Out-Host
-
+$r2 = (npx wrangler r2 bucket create popkov-books 2>&1 | Out-String)
+Write-Host $r2
+$r2ok = ($LASTEXITCODE -eq 0) -or ($r2 -match "already exists|10004")
+if (-not $r2ok) {
+  Write-Host "Хранилище R2 не включено — сайт, CRM и бот заработают, а скачивание книг включится после R2." -ForegroundColor Yellow
+  Write-Host "Включите R2: dash.cloudflare.com → R2 → подключить бесплатный тариф, затем запустите этот файл снова." -ForegroundColor Yellow
+  $t = Get-Content wrangler.toml -Raw -Encoding UTF8
+  $t = $t -replace '(?s)\[\[r2_buckets\]\].*?bucket_name = "popkov-books"\s*', ''
+  [IO.File]::WriteAllText((Resolve-Path wrangler.toml), $t, (New-Object System.Text.UTF8Encoding $false))
+}
 $root = "C:\Users\ADMIN PC\Desktop\Документы ИТ\Личное"
 $files = [ordered]@{
   "epub/zoloto-imperii.epub"           = "$root\Золото Империи\Электронная книга — Золото Империи\Редакция 5\Золото Империи — электронная книга.epub"
@@ -37,6 +45,7 @@ $files = [ordered]@{
   "epub/sertifikat-genialnosti.epub"   = "$root\Сертификат гениальности\Электронная книга — Сертификат гениальности\Сертификат гениальности — электронная книга.epub"
   "epub/ispoved.epub"                  = "$root\Исповедь. Рассказы ни о чём\Василий Попков. Исповедь. Рассказы ни о чём.epub"
 }
+if ($r2ok) {
 Step "Загружаю электронные книги (7 файлов, до 75 МБ каждый)"
 foreach ($k in $files.Keys) {
   $f = $files[$k]
@@ -44,6 +53,7 @@ foreach ($k in $files.Keys) {
   Write-Host "  $k"
   npx wrangler r2 object put "popkov-books/$k" --file "$f" --content-type "application/epub+zip" --remote
   if ($LASTEXITCODE -ne 0) { throw "Не удалось загрузить $k" }
+}
 }
 
 Step "Telegram-бот"
