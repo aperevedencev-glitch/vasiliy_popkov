@@ -27,8 +27,11 @@ if (-not $env:CLOUDFLARE_API_TOKEN) {
   $env:CLOUDFLARE_API_TOKEN = (Plain (Read-Host "Вставьте API-токен Cloudflare (символы не видны)" -AsSecureString)).Trim()
 }
 $who = (npx wrangler whoami 2>&1 | Out-String)
-if ($who -notmatch "(?i)account id|associated with") { Write-Host $who; throw "Токен не подошёл — проверьте права и попробуйте снова" }
-Write-Host "Вход выполнен" -ForegroundColor Green
+Write-Host $who
+if ($who -match "(?i)invalid|authentication error|10000|9109") { throw "Токен не подошёл — проверьте права и попробуйте снова" }
+if (-not $env:CLOUDFLARE_ACCOUNT_ID -and $who -notmatch "[0-9a-f]{32}") {
+  $env:CLOUDFLARE_ACCOUNT_ID = (Read-Host "Account ID (dash.cloudflare.com → Workers и Pages → справа «Account ID»)").Trim()
+}
 
 Step "Хранилище для книг (R2)"
 $t0 = Get-Content wrangler.toml -Raw -Encoding UTF8
