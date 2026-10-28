@@ -3,7 +3,7 @@ main = "src/index.js"
 account_id = "69baa910a30725f3c0ad38de1724cae9"
 compatibility_date = "2024-11-01"
 
-assets = { directory = "./assets", binding = "ASSETS", not_found_handling = "404-page" }
+assets = { directory = "./assets", binding = "ASSETS", not_found_handling = "404-page", run_worker_first = true }
 
 # шаблон главной страницы собирается сервером из базы (каталог, отрывки, песни)
 [[rules]]
