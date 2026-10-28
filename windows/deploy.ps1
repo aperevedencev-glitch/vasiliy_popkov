@@ -26,6 +26,11 @@ if (-not $env:CLOUDFLARE_API_TOKEN) {
   Write-Host "Нужен API-токен Cloudflare (инструкция — в сообщении Claude). Токен не сохраняется." -ForegroundColor Yellow
   $env:CLOUDFLARE_API_TOKEN = (Plain (Read-Host "Вставьте API-токен Cloudflare (символы не видны)" -AsSecureString)).Trim()
 }
+# токен — только латиница, цифры, «_» и «-»; если скопировался лишний текст, wrangler падает с ошибкой ByteString
+if ($env:CLOUDFLARE_API_TOKEN -notmatch '^[A-Za-z0-9_\-]{30,}$') {
+  $env:CLOUDFLARE_API_TOKEN = $null
+  throw "Это не похоже на API-токен: вставилось что-то лишнее (пробелы, русские буквы, стрелки). Скопируйте в Cloudflare только сам токен и запустите снова."
+}
 $who = (npx wrangler whoami 2>&1 | Out-String)
 Write-Host $who
 if ($who -match "(?i)invalid|authentication error|10000|9109") { throw "Токен не подошёл — проверьте права и попробуйте снова" }
