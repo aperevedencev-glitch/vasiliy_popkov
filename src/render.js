@@ -113,6 +113,11 @@ function excerptData(list, titles) {
   return `<script type="application/json" id="exData">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>`;
 }
 
+const plural = (n, one, few, many) => {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+};
+
 export async function renderIndex(env, template) {
   const c = await loadContent(env);
   const feat = c.books.find((b) => b.featured) || null;
@@ -126,7 +131,9 @@ export async function renderIndex(env, template) {
     .replace("<!--HERO-->", hero(feat))
     .replace("<!--BOOKS-->", list.map((b, i) => bookCard(b, i + (feat ? 2 : 1))).join("\n"))
     .replace("<!--FORMAT_FILTERS-->", filters)
-    .replace("<!--BOOK_COUNT-->", String(c.books.length))
+    .replaceAll("<!--BOOK_COUNT-->", String(c.books.length))
+    .replace("<!--CASES-->", plural(c.books.length, "дело", "дела", "дел"))
+    .replace("<!--BOOKS_WORD-->", plural(c.books.length, "книга", "книги", "книг"))
     .replace("<!--NAV_EXTRA-->", nav)
     .replace("<!--EXCERPTS-->", excerptsHtml(c.excerpts, c.titles))
     .replace("<!--SONGS-->", songsHtml(c.songs))
