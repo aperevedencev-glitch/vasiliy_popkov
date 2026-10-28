@@ -1,89 +1,102 @@
-import base64, html, json, pathlib
+"""Сборка статичных страниц сайта.
+
+Главная страница собирается сервером из базы (src/home.html + каталог, отрывки, песни),
+здесь собирается только страница стихов assets/stihi.html из src/poems.json.
+"""
+import html, json, pathlib
 
 D = pathlib.Path(__file__).parent
 ROOT = D.parent
-EPUB = {432: ("zoloto", 399), 418: ("libereya", 399), 431: ("morskaya", 399), 435: ("inkognito", 399), 414: ("kristall", 399), 421: ("sertifikat", 399), 427: ("ispoved", 199)}
-J = "https://jaaj.club/book.aspx?enname=romans&id="
-
-# kind: roman | stories | poetry ; series optional
-BOOKS = [
-    (445, "Петля Козырева", "roman", "Мистический триллер", None,
-     "Гениальный разработчик нейроинтерфейсов Алексей покупает старый особняк. Прежний владелец — профессор астрофизики — покончил с собой при странных обстоятельствах. В круглой спальне остались зеркала Козырева — пять вогнутых алюминиевых панелей, которые, по слухам, улавливают «энергию времени». В подвале Алексей запускает систему «Гипнос», превращающую энергию ночных кошмаров в электричество. Доза растёт. Дом требует боль."),
-    (435, "Инкогнито", "roman", "Роман-расследование", None,
-     "Чудов монастырь, 1601 год. Беглый инок Григорий Отрепьев на цепи, в бреду, видит то, чего не мог знать: Углич, кровь на снегу, лицо убитого царевича. Спустя двадцать лет архивариус Корецкий найдёт в пыльных свитках улики, за которые убивают. Двойная подмена, три неразличимых ребёнка и мать, не знающая, кого она похоронила."),
-    (459, "Люди из леса", "roman", "Интеллектуальный детектив", "6",
-     "Лишённые имён, прошлого и привычной жизни, Илья Прохоров и его друзья вынуждены скрываться от всевидящей «Алетейи». Случайная находка выводит их на след человека, стоявшего у истоков могущественной системы, и раскрывает замысел, способный изменить всё человечество."),
-    (458, "Конец белого лотоса", "roman", "Интеллектуальный детектив", "5",
-     "Исчезновение швейцарского учёного выводит команду «Архивной правды» на след тайного проекта, способного управлять человеческой памятью и переписывать историю. Расследование ведёт от секретов советских спецслужб к арктическим базам и загадочному «Белому Лотосу»."),
-    (457, "Общество посвящённых", "roman", "Интеллектуальный детектив", "4",
-     "Поиски загадочного «Ломоносовского кодекса» выводят команду «Архивной правды» на след тайного Общества, чьи корни уходят в глубину веков. Главная загадка — не в том, как обрести знание, а в том, имеет ли кто-нибудь право им воспользоваться."),
-    (442, "Протокол «Мёртвая петля»", "roman", "Историко-детективный роман", None,
-     "Они искали золото Российской империи. Вместо него нашли протокол «Мёртвая петля» — план исчезновения казны, который использовали и в 1918-м, и в 1991-м. Следователь, блогерша и хакер пускаются в гонку со временем, но каждый шестой шаг оборачивается ловушкой."),
-    (432, "Золото империи", "roman", "Историко-детективный роман", None,
-     "В ноябре 1919 года бесследно исчезает литерный эшелон с частью золотого запаса Российской империи. Спустя сто лет на дне Байкала находят один из его вагонов, но вместо золота внутри — свинец. За расследование берётся бывший аналитик Интерпола Алексей Романов."),
-    (431, "Морская звезда", "roman", "Психологический детектив", None,
-     "Архитектор Анна Ковалёва, пятнадцать лет назад уехавшая из приморского города Железный мыс, получает известие о гибели отца — владельца местной верфи. Город словно договорился держаться одной версии, а в памяти Анны всплывает страшная ночь у старого маяка."),
-    (426, "Тайна янтарной комнаты", "roman", "Военный детектив", None,
-     "Осень 1944 года. Медсестра Анна получает от умирающего разведчика записку, ведущую к тайне исчезнувшей Янтарной комнаты. Вместе с лейтенантом Марком она отправляется в разрушенный Ленинград, чтобы найти тайник с именами предателей."),
-    (424, "Эра равновесия", "roman", "Философская фантастика", None,
-     "Что, если правда станет источником энергии, а ложь — преступлением? Утопия, основанная на честности, оборачивается адом: искусство, любовь и дипломатия исчезают, а человечество ищет спасения в «Клубах Лжи». Финал переворачивает всё с ног на голову."),
-    (421, "Сертификат гениальности", "roman", "Интеллектуальный триллер", None,
-     "Искусствовед Анна Фальк становится свидетельницей загадочной сделки на крупнейшем аукционе мира. Расследование приводит её к тайной организации, которая превращает человеческое безумие в источник миллиардов и решает, кого считать гением."),
-    (420, "Крушение империи", "roman", "Историко-детективный роман", None,
-     "Историк Михаил Кузьмин-Караваев находит дневник прадеда — протоколиста тайного общества, готовившего отречение Николая II. Забытые документы ведут к тайне последних дней Российской империи, которая не должна была пережить свой век."),
-    (418, "Тайна Либереи", "roman", "Историко-детективный роман", None,
-     "При реставрации в Грановитой палате находят загадочный перстень и зашифрованный пергамент, связанные с библиотекой Ивана Грозного. Бывший следователь Сергей Воронов понимает: за артефактом охотятся не только историки."),
-    (416, "Тридцать шестая буква", "roman", "Историко-детективный роман", None,
-     "Осенью 1796 года умирающая Екатерина II тайными чернилами вписывает на полях «Кормчей книги» свои сокровенные и весьма смелые мысли — «Тридцать шестую букву». Книгу она прячет в тайник. В последующие два века за ней охотились, из-за неё убивали и предавали."),
-    (415, "Хранитель тени", "roman", "Интеллектуальный детектив", "2",
-     "Архивариус Илья Прохоров получает заказ разобрать документы старинной усадьбы рода Орловых и находит записи о череде загадочных смертей, преследовавших семью много поколений. Расследование затягивает его в паутину лжи, шантажа и родового проклятия."),
-    (414, "Кристалл счастья", "roman", "Интеллектуальный детектив", "3",
-     "В сердце Санкт-Петербурга загадочная гибель скромного сотрудника музея приводит агентство «Архивная правда» к расследованию. Команда выходит на след секрета, за который убивают спустя столетия. Что, если величайшее открытие Ломоносова так и не было забыто?"),
-    (413, "Чудь белоглазая", "roman", "Историко-мистический роман", None,
-     "XVIII век, Урал. Никита Демидов получает земли, богатые рудой, но первые шахты вскрывают не только серебряные жилы, но и древнюю тайну — легенды о «чуди белоглазой» и духе-хранительнице гор Тоуме. Сын Демидова Акинфий понимает: за мифами скрывается реальная сила, с которой можно заключить сделку."),
-    (417, "Источник жизни", "roman", "Интеллектуальный детектив", "1",
-     "Архивариус Алексей Белых обнаруживает след утраченного наследия Михаила Ломоносова. Вместе с журналисткой Еленой Соколовой он ищет тайник, не подозревая, что за ним уже охотятся тайное общество и могущественная корпорация."),
-    (441, "Сезон дождей для двоих", "stories", "Сборник рассказов", None,
-     "Философские размышления о пройденном пути, любви, судьбе и вере. Рассказы о правде и лжи — двух сторонах реальности, где гибель одной ведёт к краху обеих."),
-    (439, "Зимовка бабочек", "stories", "Сборник рассказов", None,
-     "Рассказы о любви, семье и отношениях. О людях, которые учатся понимать себя, говорить о чувствах и отличать настоящую близость от привычки и красивых иллюзий."),
-    (434, "Свет, который считали вечным", "stories", "Сборник рассказов", None,
-     "Иногда достаточно одного честного разговора, чтобы изменить целую жизнь. Герои сталкиваются с обидами, страхами и одиночеством, учатся защищать свои границы, прощать и вновь доверять."),
-    (438, "Чемодан без ручки", "stories", "Повесть", None,
-     "Он писал этот рассказ только для себя — способ упорядочить хаос памяти и разложить по полочкам прошлое. С каждой строчкой туман невысказанных обид рассеивался, уступая место горьковатой самоиронии."),
-    (427, "Исповедь", "stories", "Проза", None,
-     "Разговор автора с читателем о том, что он считает самым важным в жизни."),
-    (455, "Душа нараспашку", "poetry", "Стихи и рассказы", None,
-     "Стихи и рассказы о любви, боли и пути к себе. О том, что после самых тёмных моментов всегда наступает просвет."),
-]
-
-KIND = {"roman": "Романы", "stories": "Рассказы и повести", "poetry": "Поэзия"}
+poems = json.loads((ROOT / "src" / "poems.json").read_text(encoding="utf-8"))
+poems.sort(key=lambda p: p["t"].lower().lstrip("«\"…. "))
 
 
-def cover(i):
-    return f"/covers/{i}.jpg"
+def poem_html(i, p):
+    stanzas, cur = [], []
+    for line in p["l"] + [""]:
+        if line.strip():
+            cur.append(html.escape(line))
+        elif cur:
+            stanzas.append("<br>".join(cur))
+            cur = []
+    body = "".join(f"<p>{s}</p>" for s in stanzas)
+    return (f'<article class="poem" id="p{i}" data-t="{html.escape(p["t"].lower())}">'
+            f'<h2>{html.escape(p["t"])}</h2><div class="txt">{body}</div>'
+            f'<p class="d">{html.escape(p.get("d", ""))}</p></article>')
 
 
-def card(n, b):
-    i, title, kind, genre, series, ann = b
-    e = EPUB.get(i)
-    buy = (f'<button type="button" class="buy" data-book="{e[0]}" data-title="{html.escape(title)}">'
-           f'Купить EPUB · <span class="price" data-price="{e[0]}">{e[1]} ₽</span></button>\n    ') if e else ""
-    s = f'<span class="series">«Сокровища заброшенных усадеб» · книга {series}</span>' if series else ""
-    return f'''<article class="book" data-kind="{kind}"{' data-epub="1"' if e else ''}>
-  <a class="cover" href="{J}{i}" target="_blank" rel="noopener"><img src="{cover(i)}" alt="Обложка книги «{html.escape(title)}»" loading="lazy" width="420" height="630"></a>
-  <div class="meta">
-    <p class="shelf">Дело № {n:02d} · {genre}</p>
-    <h3>{html.escape(title)}</h3>{s}
-    <p class="ann">{html.escape(ann)}</p>
-    {buy}<a class="go" href="{J}{i}" target="_blank" rel="noopener" data-ev="book" data-target="{i}">Читать и купить на Jaaj.Club</a>
-  </div>
-</article>'''
+index = "".join(f'<li><a href="#p{i}">{html.escape(p["t"])}</a></li>' for i, p in enumerate(poems))
+items = "\n".join(poem_html(i, p) for i, p in enumerate(poems))
 
-
-books_html = "\n".join(card(n, b) for n, b in enumerate(BOOKS[1:], 2))
-tpl = (D / "site_template.html").read_text(encoding="utf-8")
-out = (tpl.replace("{{BOOKS}}", books_html)
-          .replace("{{HERO_COVER}}", cover(445)))
-(ROOT / "assets" / "index.html").write_text(out, encoding="utf-8")
-print(len(out))
+page = f"""<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Стихи — Василий Попков</title>
+<meta name="description" content="Стихотворения Василия Попкова: {len(poems)} стихотворений о любви, памяти и пути к себе.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prata&family=Literata:ital,opsz,wght@0,7..72,400;1,7..72,400&family=PT+Mono&display=swap">
+<style>
+:root{{--bg:#ECEDE6;--paper:#F7F7F2;--ink:#1C2430;--muted:#5A6270;--rule:#C9CBC0;--stamp:#5B4A8B;--brass:#8C6D24;
+  --display:"Prata",Georgia,serif;--body:"Literata",Georgia,serif;--mono:"PT Mono",ui-monospace,monospace}}
+@media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{--bg:#141922;--paper:#1B212C;--ink:#E4E3DA;--muted:#9CA3AF;--rule:#2E3644;--stamp:#A898DA;--brass:#D2B266;color-scheme:dark}}}}
+:root[data-theme="dark"]{{--bg:#141922;--paper:#1B212C;--ink:#E4E3DA;--muted:#9CA3AF;--rule:#2E3644;--stamp:#A898DA;--brass:#D2B266;color-scheme:dark}}
+*{{box-sizing:border-box}}
+body{{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 var(--body)}}
+a{{color:inherit}}
+.wrap{{max-width:1100px;margin:0 auto;padding:0 16px}}
+nav{{border-bottom:1px solid var(--rule)}}
+nav .wrap{{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-block:14px;flex-wrap:wrap}}
+nav a{{font-family:var(--mono);font-size:13px;color:var(--muted);text-decoration:none}}
+nav .who{{font-family:var(--display);font-size:20px;color:var(--ink)}}
+header{{padding-block:40px 24px}}
+h1{{font:400 clamp(34px,5vw,52px)/1.1 var(--display);margin:0 0 10px}}
+.label{{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}}
+.tools{{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 0}}
+.tools input{{font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:2px;padding:9px 12px;width:min(420px,100%)}}
+.tools span{{font-family:var(--mono);font-size:12.5px;color:var(--muted)}}
+.layout{{display:grid;grid-template-columns:260px minmax(0,1fr);gap:36px;align-items:start;padding-bottom:60px}}
+.toc{{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;font-size:14px;border-right:1px solid var(--rule);padding-right:14px}}
+.toc ul{{list-style:none;margin:0;padding:0}}
+.toc li{{margin:0 0 4px}}
+.toc a{{text-decoration:none;color:var(--muted)}}
+.toc a:hover{{color:var(--ink)}}
+.poem{{background:var(--paper);border:1px solid var(--rule);padding:24px 26px;margin-bottom:22px;scroll-margin-top:12px}}
+.poem h2{{font:400 24px/1.25 var(--display);margin:0 0 12px}}
+.poem .txt p{{margin:0 0 1em;font-style:italic}}
+.poem .d{{font-family:var(--mono);font-size:12px;color:var(--muted);margin:0}}
+footer{{border-top:1px solid var(--rule);padding-block:24px 40px;color:var(--muted);font-size:14px}}
+:focus-visible{{outline:2px solid var(--stamp);outline-offset:3px}}
+@media (max-width:820px){{.layout{{grid-template-columns:1fr}}.toc{{display:none}}}}
+</style>
+</head>
+<body>
+<nav><div class="wrap"><a class="who" href="/">Василий Попков</a><a href="/#books">← Книги автора</a></div></nav>
+<header><div class="wrap">
+  <p class="label">Избранное · {len(poems)} стихотворений</p>
+  <h1>Стихи</h1>
+  <div class="tools"><input id="q" type="search" placeholder="Найти по названию или строке" aria-label="Поиск по стихам"><span id="cnt"></span></div>
+</div></header>
+<div class="wrap layout">
+  <aside class="toc" aria-label="Содержание"><ul>{index}</ul></aside>
+  <main id="list">
+{items}
+  </main>
+</div>
+<footer><div class="wrap">© Василий Попков · <a href="/">На главную</a></div></footer>
+<script>
+(function(){{
+  const q=document.getElementById('q'),cnt=document.getElementById('cnt'),all=[...document.querySelectorAll('.poem')];
+  const toc=[...document.querySelectorAll('.toc li')];
+  const upd=()=>{{const s=q.value.trim().toLowerCase();let n=0;all.forEach((p,i)=>{{const ok=!s||p.textContent.toLowerCase().includes(s);p.hidden=!ok;if(toc[i])toc[i].hidden=!ok;if(ok)n++}});cnt.textContent=s?('Найдено: '+n):''}};
+  q.addEventListener('input',upd);
+  try{{navigator.sendBeacon('/api/event',new Blob([JSON.stringify({{type:'poem_open',target:'page'}})],{{type:'application/json'}}))}}catch(e){{}}
+}})();
+</script>
+</body>
+</html>
+"""
+(ROOT / "assets" / "stihi.html").write_text(page, encoding="utf-8")
+print("stihi.html", len(page), "стихотворений:", len(poems))

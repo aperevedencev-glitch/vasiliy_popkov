@@ -5,6 +5,12 @@ compatibility_date = "2024-11-01"
 
 assets = { directory = "./assets", binding = "ASSETS", not_found_handling = "404-page" }
 
+# шаблон главной страницы собирается сервером из базы (каталог, отрывки, песни)
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
 [vars]
 SITE_URL = "https://popkov-site.a-perevedencev.workers.dev"
 BOT_USERNAME = "PetyaVasechkinBot"

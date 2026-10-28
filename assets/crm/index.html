@@ -65,6 +65,22 @@ textarea{width:100%;min-height:90px}
 .form label{display:flex;flex-direction:column;gap:3px;font:12px var(--mono);color:var(--muted)}
 .linkbox{font:12px var(--mono);word-break:break-all;background:var(--bg);padding:6px 8px;border:1px dashed var(--rule);margin-top:6px}
 :focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+.bk{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px;border-bottom:1px solid var(--rule)}
+.bk:last-child{border-bottom:0}
+.bk img{width:64px;height:96px;object-fit:cover;background:var(--rule);display:block}
+.bk h3{font:400 17px var(--display);margin:0 0 2px}
+.fmtl{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.fmtl .badge{font-size:12px}
+.k-ebook{color:var(--stamp)}.k-print{color:var(--brass)}.k-audio{color:var(--ok)}
+.editor{background:var(--paper);border:1px solid var(--ink);padding:16px;margin:0 0 16px}
+.editor h2{font:400 19px var(--display);margin:0 0 10px}
+.fbox{border:1px dashed var(--rule);padding:12px;margin:10px 0}
+.up{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:12px var(--mono)}
+.up progress{width:140px}
+.check{flex-direction:row!important;align-items:center;gap:6px!important}
+.check input{width:auto}
+.wide2{grid-column:1/-1}
+audio{max-width:100%}
 </style>
 </head>
 <body>
@@ -87,7 +103,25 @@ function login(){
   $('#lf').onsubmit=async e=>{e.preventDefault();try{await api('login',{password:$('#pw').value});start()}catch(err){$('#lerr').textContent=err.message}};
 }
 
-const TABS=[['overview','Обзор'],['orders','Заявки'],['leads','Обращения'],['subs','Подписчики'],['partners','Партнёры'],['books','Каталог']];
+const TABS=[['overview','Обзор'],['orders','Заявки'],['leads','Обращения'],['subs','Подписчики'],['partners','Партнёры'],['books','Каталог'],['excerpts','Отрывки'],['songs','Песни']];
+const FK={ebook:'Электронная',print:'Печатная',audio:'Аудиокнига'};
+const BK={roman:'Роман',stories:'Рассказы и повести',poetry:'Поэзия'};
+// загрузка файла в хранилище R2 с индикатором
+function uploadFile(file,prefix,bar){return new Promise((res,rej)=>{const x=new XMLHttpRequest();
+  x.open('PUT','/api/crm/upload?prefix='+prefix+'&name='+encodeURIComponent(file.name));x.setRequestHeader('content-type',file.type||'application/octet-stream');
+  if(bar){bar.hidden=false;x.upload.onprogress=e=>{if(e.lengthComputable)bar.value=e.loaded/e.total}}
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status===401){login();return rej(new Error('Нужно войти'))}j.ok?res(j):rej(new Error(j.error||'Не удалось загрузить'))};
+  x.onerror=()=>rej(new Error('Нет связи с сервером'));x.send(file)})}
+// поле «файл»: показать текущий, загрузить новый
+function fileField(id,label,key,name,prefix,accept,r2){
+  return `<div class="up wide2" data-up="${id}" data-prefix="${prefix}"><span>${label}:</span><span class="cur">${key?esc(name||key):'<span class="muted">нет</span>'}</span>
+  <input type="hidden" data-key value="${esc(key||'')}"><input type="hidden" data-name value="${esc(name||'')}"><input type="hidden" data-size value="">
+  ${r2?`<input type="file" accept="${accept}"><progress hidden max="1" value="0"></progress>`:'<span class="muted">загрузка файлов — после включения R2</span>'}${key?'<button type="button" class="btn small" data-clear>Убрать</button>':''}</div>`}
+function bindUploads(root){root.querySelectorAll('[data-up]').forEach(box=>{
+  const inp=box.querySelector('input[type=file]');if(inp)inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
+    try{const r=await uploadFile(f,box.dataset.prefix,box.querySelector('progress'));box.querySelector('[data-key]').value=r.key;box.querySelector('[data-name]').value=f.name;box.querySelector('[data-size]').value=r.size;box.querySelector('.cur').textContent=f.name+' — загружено';toast('Файл загружен, не забудьте сохранить')}catch(e){toast(e.message)}};
+  const c=box.querySelector('[data-clear]');if(c)c.onclick=()=>{box.querySelector('[data-key]').value='';box.querySelector('[data-name]').value='';box.querySelector('.cur').innerHTML='<span class="muted">будет убран при сохранении</span>'}})}
+const upVal=(root,id,f)=>root.querySelector(`[data-up="${id}"] [data-${f}]`)?.value||'';
 let tab=(location.hash||'#overview').slice(1);
 function start(){
   $('#app').innerHTML=`<div class="wrap"><header><h1>CRM · Василий Попков</h1><nav>${TABS.map(([k,t])=>`<button type="button" data-tab="${k}">${t}</button>`).join('')}<button type="button" id="out">Выйти</button></nav></header><main id="view"></main></div>`;
@@ -98,7 +132,7 @@ function start(){
 }
 function render(){
   document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===tab?'true':'false'));
-  ({overview,orders,leads,subs,partners,books}[tab]||overview)().catch(e=>$('#view').innerHTML=`<p>${esc(e.message)}</p>`);
+  ({overview,orders,leads,subs,partners,books,excerpts,songs}[tab]||overview)().catch(e=>$('#view').innerHTML=`<p>${esc(e.message)}</p>`);
 }
 
 // ---------- Обзор
@@ -123,10 +157,11 @@ async function overview(){
   const conv=sum(views)?(ord/sum(views)*100).toFixed(1)+' %':'—';
   $('#view').innerHTML=`
   ${d.botLinked?'':'<div class="warnbox">Уведомления в Telegram ещё не подключены: напишите боту <b>/admin пароль-от-CRM</b>.</div>'}
+  ${d.r2?'':'<div class="warnbox">Хранилище файлов R2 не включено: нельзя загрузить книги, аудио и песни, покупатели не получат ссылки на скачивание. Включите R2 в Cloudflare (бесплатный тариф) и запустите «Развернуть сайт.bat».</div>'}
   <div class="tools"><span class="muted small">Период:</span>${[7,30,90,365].map(n=>`<button class="chip btn" data-days="${n}" ${n===days?'style="background:var(--ink);color:var(--paper)"':''}>${n===365?'год':n+' дн.'}</button>`).join('')}</div>
   <div class="kpis">
     <div class="kpi"><b>${sum(views).toLocaleString('ru-RU')}</b><span>просмотров сайта</span></div>
-    <div class="kpi"><b>${ord}</b><span>заявок на EPUB · конверсия ${conv}</span></div>
+    <div class="kpi"><b>${ord}</b><span>заявок на книги · конверсия ${conv}</span></div>
     <div class="kpi"><b>${rub(rev)}</b><span>выручка · продано ${sold}</span></div>
     <div class="kpi"><b>${d.counts.open_orders}</b><span>заявок ждут действия</span></div>
     <div class="kpi"><b>${d.counts.subscribers}</b><span>подписчиков · +${sum(subs)} за период</span></div>
@@ -134,14 +169,18 @@ async function overview(){
   </div>
   <div class="grid2">
     <div class="panel"><h2>Просмотры сайта</h2><p class="sub">по дням</p>${barChart(list,views,'Просмотры по дням')}</div>
-    <div class="panel"><h2>Заявки на EPUB</h2><p class="sub">по дням, сайт и бот</p>${barChart(list,orders,'Заявки по дням')}</div>
+    <div class="panel"><h2>Заявки на книги</h2><p class="sub">по дням, сайт и бот</p>${barChart(list,orders,'Заявки по дням')}</div>
   </div>
   <div class="grid2">
     <div class="panel"><h2>Переходы в магазины</h2>${hbars(d.shops)}</div>
-    <div class="panel"><h2>Интерес к книгам</h2><p class="sub">открытия «Купить EPUB» и переходы на Jaaj.Club</p>${hbars(d.books.map(r=>({...r,target:bookName(r.target)})))}</div>
+    <div class="panel"><h2>Интерес к книгам</h2><p class="sub">переходы на Jaaj.Club</p>${hbars(d.books.map(r=>({...r,target:bookName(r.target)})))}</div>
   </div>
   <div class="panel"><h2>Продажи по книгам</h2><div class="tablewrap" style="border:0"><table><thead><tr><th>Книга</th><th class="num">Заявок</th><th class="num">Продано</th><th class="num">Выручка</th></tr></thead><tbody>
-  ${d.sales.map(s=>`<tr><td>${esc(s.title)}</td><td class="num">${s.orders||0}</td><td class="num">${s.sold||0}</td><td class="num">${rub(s.revenue)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  ${d.sales.filter(s=>s.orders).map(s=>`<tr><td>${esc(s.title)}</td><td class="num">${s.orders||0}</td><td class="num">${s.sold||0}</td><td class="num">${rub(s.revenue)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Заявок за период нет</td></tr>'}</tbody></table></div></div>
+  <div class="grid2" style="margin-top:18px">
+    <div class="panel"><h2>Заявки по видам изданий</h2>${hbars((d.formatsSold||[]).map(r=>({target:FK[r.kind]||'Электронная',n:r.orders})))}</div>
+    <div class="panel"><h2>Песни</h2><p class="sub">прослушивания и скачивания, всего</p>${hbars((d.songs||[]).map(r=>({target:r.title+' · ▶ '+r.plays,n:r.downloads})))}</div>
+  </div>`;
   document.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('days',b.dataset.days);render()});
 }
 const JAAJ={445:'Петля Козырева',435:'Инкогнито',459:'Люди из леса',458:'Конец белого лотоса',457:'Общество посвящённых',455:'Душа нараспашку',442:'Протокол «Мёртвая петля»',441:'Сезон дождей для двоих',439:'Зимовка бабочек',438:'Чемодан без ручки',434:'Свет, который считали вечным',432:'Золото империи',431:'Морская звезда',427:'Исповедь',426:'Тайна янтарной комнаты',424:'Эра равновесия',421:'Сертификат гениальности',420:'Крушение империи',418:'Тайна Либереи',417:'Источник жизни',416:'Тридцать шестая буква',415:'Хранитель тени',414:'Кристалл счастья',413:'Чудь белоглазая',zoloto:'Золото империи (EPUB)',libereya:'Либерея (EPUB)',morskaya:'Морская звезда (EPUB)',inkognito:'Инкогнито (EPUB)',kristall:'Кристалл счастья (EPUB)',sertifikat:'Сертификат гениальности (EPUB)',ispoved:'Исповедь (EPUB)'};
@@ -150,22 +189,23 @@ const bookName=t=>JAAJ[t]||t;
 // ---------- Заявки
 let ordFilter='open';
 async function orders(){
-  const {items}=await api('orders');const {items:bk}=await api('books');
+  const {items}=await api('orders');const cat=await api('books');const bt=Object.fromEntries(cat.items.map(b=>[b.id,b.title]));
+  const fl=cat.formats.filter(f=>f.active&&f.price>0);
   const show=items.filter(o=>ordFilter==='all'||(ordFilter==='open'?['new','waiting','paid'].includes(o.status):o.status===ordFilter));
   $('#view').innerHTML=`<div class="tools">${[['open','В работе'],['new','Новые'],['waiting','Ждут оплаты'],['sent','Отправлены'],['cancelled','Отменены'],['all','Все']].map(([k,t])=>`<button class="btn chip" data-f="${k}" ${k===ordFilter?'style="background:var(--ink);color:var(--paper)"':''}>${t} (${k==='all'?items.length:items.filter(o=>k==='open'?['new','waiting','paid'].includes(o.status):o.status===k).length})</button>`).join('')}<span class="grow"></span><a class="btn" href="/api/crm/export?t=orders">CSV</a><button class="btn" id="addOrd">Добавить заявку</button></div>
-  <div id="newOrd" hidden class="panel" style="margin-bottom:12px"><div class="form"><label>Книга<select id="no-book">${bk.map(b=>`<option value="${b.id}">${esc(b.title)} — ${rub(b.price)}</option>`).join('')}</select></label><label>Имя<input id="no-name"></label><label>E-mail<input id="no-email"></label><label>Telegram<input id="no-tg" placeholder="@username"></label></div><button class="btn primary" id="no-save">Создать</button></div>
+  <div id="newOrd" hidden class="panel" style="margin-bottom:12px"><div class="form"><label>Книга<select id="no-book">${fl.map(f=>`<option value="${f.id}" data-kind="${f.kind}">${esc(bt[f.book_id]||f.book_id)} · ${FK[f.kind]}${f.label?' · '+esc(f.label):''} — ${rub(f.price)}</option>`).join('')}</select></label><label>Имя<input id="no-name"></label><label>E-mail<input id="no-email"></label><label>Telegram<input id="no-tg" placeholder="@username"></label><label>Телефон (для печатной)<input id="no-phone"></label><label class="wide2">Адрес доставки (для печатной)<input id="no-addr"></label></div><button class="btn primary" id="no-save">Создать</button></div>
   <div class="tablewrap"><table><thead><tr><th>№</th><th>Дата</th><th>Книга</th><th>Покупатель</th><th>Статус</th><th>Действия</th></tr></thead><tbody>
-  ${show.map(o=>`<tr data-id="${o.id}"><td>${o.id}</td><td class="small">${dt(o.created)}<br><span class="muted">${o.source==='bot'?'бот':o.source==='crm'?'CRM':'сайт'}</span></td><td>${esc(o.title)}<br><span class="muted small">${rub(o.price)}</span></td>
-  <td>${esc(o.name||'')}<br><span class="small">${o.email?`<a href="mailto:${esc(o.email)}">${esc(o.email)}</a>`:''} ${o.telegram?`<a href="https://t.me/${esc(o.telegram.slice(1))}" target="_blank" rel="noopener">${esc(o.telegram)}</a>`:''} ${o.chat_id?'<span class="badge s-sent">в боте</span>':''}</span></td>
+  ${show.map(o=>`<tr data-id="${o.id}"><td>${o.id}</td><td class="small">${dt(o.created)}<br><span class="muted">${o.source==='bot'?'бот':o.source==='crm'?'CRM':'сайт'}</span></td><td>${esc(o.title)}<br><span class="badge k-${o.format_kind||'ebook'}">${FK[o.format_kind||'ebook']}${o.format_label?' · '+esc(o.format_label):''}</span> <span class="muted small">${rub(o.price)}</span>${o.address?`<div class="small">📦 ${esc(o.address)}</div>`:''}</td>
+  <td>${esc(o.name||'')}<br><span class="small">${o.email?`<a href="mailto:${esc(o.email)}">${esc(o.email)}</a>`:''} ${o.telegram?`<a href="https://t.me/${esc(o.telegram.slice(1))}" target="_blank" rel="noopener">${esc(o.telegram)}</a>`:''} ${o.phone?`<a href="tel:${esc(o.phone)}">${esc(o.phone)}</a>`:''} ${o.chat_id?'<span class="badge s-sent">в боте</span>':''}</span></td>
   <td><span class="badge s-${o.status}">${STATUS[o.status]}</span>${o.note?`<div class="small muted">${esc(o.note)}</div>`:''}<div class="lb"></div></td>
-  <td><div class="actions">${['new','waiting'].includes(o.status)?`<button class="btn small primary" data-a="deliver">Оплачено — отправить</button>`:''}${o.status==='paid'?`<button class="btn small primary" data-a="deliver">Отправить книгу</button>`:''}${o.status==='new'?`<button class="btn small" data-a="waiting">Ждёт оплаты</button>`:''}${['paid','sent'].includes(o.status)?`<button class="btn small" data-a="link">Новая ссылка</button>`:''}${o.status==='paid'?`<button class="btn small" data-a="sent">Отправлено вручную</button>`:''}${!['cancelled','sent'].includes(o.status)?`<button class="btn small" data-a="cancelled">Отменить</button>`:''}<button class="btn small" data-a="note">Заметка</button></div></td></tr>`).join('')||'<tr><td colspan="6" class="muted">Заявок нет</td></tr>'}
+  <td><div class="actions">${(()=>{const pr=o.format_kind==='print';return (['new','waiting'].includes(o.status)?`<button class="btn small primary" data-a="deliver">${pr?'Оплачено':'Оплачено — отправить'}</button>`:'')+(o.status==='paid'&&!pr?`<button class="btn small primary" data-a="deliver">Отправить книгу</button>`:'')+(o.status==='new'?`<button class="btn small" data-a="waiting">Ждёт оплаты</button>`:'')+(['paid','sent'].includes(o.status)&&!pr?`<button class="btn small" data-a="link">Новая ссылка</button>`:'')+(o.status==='paid'?`<button class="btn small" data-a="sent">${pr?'Книга отправлена почтой':'Отправлено вручную'}</button>`:'')})()}${!['cancelled','sent'].includes(o.status)?`<button class="btn small" data-a="cancelled">Отменить</button>`:''}<button class="btn small" data-a="note">Заметка</button></div></td></tr>`).join('')||'<tr><td colspan="6" class="muted">Заявок нет</td></tr>'}
   </tbody></table></div>`;
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ordFilter=b.dataset.f;render()});
   $('#addOrd').onclick=()=>{$('#newOrd').hidden=!$('#newOrd').hidden};
-  $('#no-save').onclick=async()=>{try{await api('order',{action:'create',book:$('#no-book').value,name:$('#no-name').value,email:$('#no-email').value,telegram:$('#no-tg').value});toast('Заявка создана');render()}catch(e){toast(e.message)}};
+  $('#no-save').onclick=async()=>{try{await api('order',{action:'create',format:$('#no-book').value,name:$('#no-name').value,email:$('#no-email').value,telegram:$('#no-tg').value,phone:$('#no-phone').value,address:$('#no-addr').value});toast('Заявка создана');render()}catch(e){toast(e.message)}};
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{const tr=b.closest('tr'),id=Number(tr.dataset.id),a=b.dataset.a;b.disabled=true;
     try{
-      if(a==='deliver'){const r=await api('order',{action:'deliver',id});if(r.delivered){toast('Книга отправлена в Telegram');render()}else{tr.querySelector('.lb').innerHTML=`<div class="linkbox">${esc(r.url)}</div><button class="btn small" data-copy>Скопировать ссылку</button> <span class="small muted">Отправьте покупателю на e-mail и отметьте «Отправлено вручную».</span>`;tr.querySelector('[data-copy]').onclick=()=>copy(r.url);toast('Оплата отмечена, ссылка готова')}}
+      if(a==='deliver'){const r=await api('order',{action:'deliver',id});if(r.print){toast('Оплата отмечена — отправьте книгу и нажмите «Книга отправлена почтой»');render()}else if(r.nofile){toast('Оплата отмечена. Файл не загружен в каталог — отправьте книгу сами');render()}else if(r.delivered){toast('Книга отправлена в Telegram');render()}else{tr.querySelector('.lb').innerHTML=`<div class="linkbox">${esc(r.url)}</div><button class="btn small" data-copy>Скопировать ссылку</button> <span class="small muted">Отправьте покупателю на e-mail и отметьте «Отправлено вручную».</span>`;tr.querySelector('[data-copy]').onclick=()=>copy(r.url);toast('Оплата отмечена, ссылка готова')}}
       else if(a==='link'){const r=await api('order',{action:'link',id});tr.querySelector('.lb').innerHTML=`<div class="linkbox">${esc(r.url)}</div><button class="btn small" data-copy>Скопировать</button>`;tr.querySelector('[data-copy]').onclick=()=>copy(r.url)}
       else if(a==='note'){const box=tr.querySelector('.lb');box.innerHTML=`<textarea>${esc(items.find(o=>o.id===id).note||'')}</textarea><button class="btn small primary">Сохранить</button>`;box.querySelector('button').onclick=async()=>{await api('order',{action:'status',id,status:items.find(o=>o.id===id).status,note:box.querySelector('textarea').value});render()}}
       else{await api('order',{action:'status',id,status:a});render()}
@@ -216,11 +256,112 @@ async function partners(edit){
 }
 
 // ---------- Каталог
-async function books(){
-  const {items}=await api('books');
-  $('#view').innerHTML=`<p class="muted small">Цены и доступность электронных книг. Изменения сразу видны на сайте и в боте.</p><div class="tablewrap"><table><thead><tr><th>Книга</th><th>Файл</th><th class="num">Цена, ₽</th><th>Продаётся</th><th></th></tr></thead><tbody>
-  ${items.map(b=>`<tr data-id="${b.id}"><td>${esc(b.title)}</td><td class="small muted">${esc(b.epub_name)}</td><td class="num"><input type="number" min="0" step="1" value="${b.price}" style="width:100px;text-align:right"></td><td><input type="checkbox" ${b.active?'checked':''}></td><td><button class="btn small primary">Сохранить</button></td></tr>`).join('')}</tbody></table></div>`;
-  document.querySelectorAll('tr[data-id] button').forEach(btn=>btn.onclick=async()=>{const tr=btn.closest('tr');await api('books',{id:tr.dataset.id,price:tr.querySelector('input[type=number]').value,active:tr.querySelector('input[type=checkbox]').checked});toast('Сохранено')});
+async function books(edit){
+  const d=await api('books');const fm={};d.formats.forEach(f=>(fm[f.book_id]=fm[f.book_id]||[]).push(f));
+  const e=edit||null;
+  const fRow=f=>`<span class="badge k-${f.kind}" title="${f.active?'':'скрыто'}" style="${f.active?'':'opacity:.5'}">${FK[f.kind]}${f.label?' · '+esc(f.label):''}${f.price?' · '+rub(f.price):''}${f.shop_url?' · магазин':''}${f.file_key?' · файл':''}${f.sample_key?' · фрагмент':''}</span>`;
+  $('#view').innerHTML=`${d.r2?'':'<div class="warnbox">R2 не включено: файлы книг, обложки и фрагменты пока не загрузить. Ссылки на магазины и цены работают.</div>'}
+  <div class="tools"><span class="grow muted small">Книги, их электронные, печатные и аудиоверсии. Изменения сразу видны на сайте и в боте.</span><button class="btn primary" id="addBook">Добавить книгу</button></div>
+  <div id="ed"></div>
+  <div class="tablewrap">${d.items.map(b=>`<div class="bk" data-id="${esc(b.id)}" style="${b.shown?'':'opacity:.55'}">
+    ${b.cover?`<img src="${esc(b.cover)}" alt="" loading="lazy">`:'<span style="width:64px;height:96px;background:var(--rule);display:block"></span>'}
+    <div><h3>${esc(b.title)}${b.featured?' <span class="badge s-new">в шапке</span>':''}${b.shown?'':' <span class="badge s-cancelled">скрыта</span>'}</h3>
+    <div class="small muted">${BK[b.kind]||''}${b.genre?' · '+esc(b.genre):''}${b.series?' · серия, книга '+esc(b.series):''} · порядок ${b.sort}</div>
+    <div class="fmtl">${(fm[b.id]||[]).map(fRow).join('')||'<span class="small muted">изданий нет — добавьте электронную, печатную или аудиоверсию</span>'}</div></div>
+    <div class="actions"><button class="btn small" data-edit>Изменить</button></div></div>`).join('')}</div>`;
+  $('#addBook').onclick=()=>bookEditor({kind:'roman',shown:1,sort:100},[],d.r2);
+  document.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>{const id=btn.closest('.bk').dataset.id;bookEditor(d.items.find(b=>b.id===id),fm[id]||[],d.r2)});
+  if(e)bookEditor(d.items.find(b=>b.id===e)||null,fm[e]||[],d.r2);
+}
+function bookEditor(b,fs,r2){
+  const ed=$('#ed');if(!b){ed.innerHTML='';return}
+  ed.innerHTML=`<div class="editor"><h2>${b.id?'Книга «'+esc(b.title)+'»':'Новая книга'}</h2><div class="form">
+  <label class="wide2">Название<input id="b-title" value="${esc(b.title||'')}"></label>
+  <label>Раздел<select id="b-kind">${Object.entries(BK).map(([k,v])=>`<option value="${k}" ${k===b.kind?'selected':''}>${v}</option>`).join('')}</select></label>
+  <label>Жанр<input id="b-genre" value="${esc(b.genre||'')}" placeholder="Историко-детективный роман"></label>
+  <label>Номер в серии «Сокровища заброшенных усадеб»<input id="b-series" value="${esc(b.series||'')}" placeholder="пусто — не в серии"></label>
+  <label>Порядок на сайте<input id="b-sort" type="number" value="${b.sort??100}"></label>
+  <label class="wide2">Аннотация<textarea id="b-ann">${esc(b.annotation||'')}</textarea></label>
+  <label class="wide2">Где читать онлайн (ссылка)<input id="b-read" value="${esc(b.read_url||'')}" placeholder="https://jaaj.club/…"></label>
+  <label class="wide2">Обложка — адрес картинки<input id="b-cover" value="${esc(b.cover||'')}" placeholder="/covers/445.jpg"></label>
+  ${fileField('cover','Загрузить обложку',null,null,'covers','image/*',r2)}
+  <label class="check"><input type="checkbox" id="b-shown" ${b.shown?'checked':''}> Показывать на сайте</label>
+  <label class="check"><input type="checkbox" id="b-feat" ${b.featured?'checked':''}> Главная книга в шапке сайта</label></div>
+  <div class="actions"><button class="btn primary" id="b-save">Сохранить книгу</button><button class="btn" id="b-close">Закрыть</button>${b.id?'<button class="btn" id="b-del">Удалить</button>':''}</div>
+  ${b.id?`<h2 style="margin-top:18px">Издания</h2><p class="small muted">Цена — продажа у автора через сайт и бота (заявка → оплата → ссылка на файл или отправка почтой). Ссылка на магазин — кнопка перехода в Ridero, Литрес, OZON и т. п. Можно указать и то, и другое.</p>
+  <div id="fl">${fs.map(fmtForm).join('')}</div>
+  <div class="actions"><button class="btn" data-addf="ebook">+ Электронная</button><button class="btn" data-addf="print">+ Печатная</button><button class="btn" data-addf="audio">+ Аудиокнига</button></div>`:'<p class="small muted">Издания (электронное, печатное, аудио) добавляются после сохранения книги.</p>'}</div>`;
+  ed.scrollIntoView({behavior:'smooth',block:'start'});
+  bindUploads(ed);
+  ed.querySelector('[data-up="cover"] input[type=file]')?.addEventListener('change',()=>setTimeout(()=>{const k=upVal(ed,'cover','key');if(k)$('#b-cover').value='/media/'+k},800));
+  $('#b-close').onclick=()=>{ed.innerHTML=''};
+  $('#b-save').onclick=async()=>{try{const k=upVal(ed,'cover','key');const r=await api('book-save',{id:b.id,title:$('#b-title').value,kind:$('#b-kind').value,genre:$('#b-genre').value,series:$('#b-series').value,sort:$('#b-sort').value,annotation:$('#b-ann').value,read_url:$('#b-read').value,cover:k?'/media/'+k:$('#b-cover').value,shown:$('#b-shown').checked,featured:$('#b-feat').checked});toast('Книга сохранена');books(r.id)}catch(e){toast(e.message)}};
+  if(b.id)$('#b-del').onclick=async()=>{if(!confirm('Удалить книгу «'+b.title+'»? Если по ней были заявки, она будет только скрыта.'))return;const r=await api('book-delete',{id:b.id});toast(r.hidden?'По книге есть заявки — она скрыта с сайта':'Книга удалена');books()};
+  ed.querySelectorAll('[data-addf]').forEach(x=>x.onclick=()=>{const k=x.dataset.addf;const div=document.createElement('div');div.innerHTML=fmtForm({kind:k,active:1,label:k==='ebook'?'EPUB':k==='audio'?'MP3':''},true);$('#fl').appendChild(div.firstElementChild);bindFmt(b,ed)});
+  bindFmt(b,ed);
+}
+function fmtForm(f){const r2=true;
+  return `<div class="fbox" data-fid="${f.id||''}" data-kind="${f.kind}"><b class="k-${f.kind}">${FK[f.kind]}</b><div class="form" style="margin-top:8px">
+  <label>Описание издания<input data-f="label" value="${esc(f.label||'')}" placeholder="${f.kind==='print'?'Мягкая обложка, 320 с.':f.kind==='audio'?'MP3, 9 ч 40 мин':'EPUB'}"></label>
+  <label>Цена у автора, ₽<input data-f="price" type="number" min="0" value="${f.price??''}" placeholder="пусто — не продаётся у автора"></label>
+  <label>Магазин<input data-f="shop_name" value="${esc(f.shop_name||'')}" placeholder="${f.kind==='print'?'Ridero':f.kind==='audio'?'Литрес':'Литрес'}"></label>
+  <label>Ссылка на магазин<input data-f="shop_url" value="${esc(f.shop_url||'')}" placeholder="https://…"></label>
+  ${f.kind!=='print'?fileField('file'+(f.id||'n'),'Файл для покупателя',f.file_key,f.file_name,'files',f.kind==='audio'?'audio/*,.zip,.m4b':'.epub,.pdf,.fb2,.zip',true):''}
+  ${f.kind==='audio'?fileField('sample'+(f.id||'n'),'Фрагмент для прослушивания',f.sample_key,null,'samples','audio/*',true):''}
+  <label class="check"><input type="checkbox" data-f="active" ${f.active?'checked':''}> Показывать</label></div>
+  <div class="actions"><button class="btn small primary" data-fsave>Сохранить издание</button>${f.id?'<button class="btn small" data-fdel>Удалить</button>':''}</div></div>`}
+function bindFmt(b,ed){ed.querySelectorAll('.fbox').forEach(box=>{if(box.dataset.bound)return;box.dataset.bound=1;bindUploads(box);
+  const v=k=>box.querySelector(`[data-f="${k}"]`);const id=box.dataset.fid;
+  box.querySelector('[data-fsave]').onclick=async()=>{try{
+    const fu=box.querySelector('[data-up^="file"]'),su=box.querySelector('[data-up^="sample"]');
+    await api('format-save',{id:id||undefined,book_id:b.id,kind:box.dataset.kind,label:v('label').value,price:v('price').value,shop_name:v('shop_name').value,shop_url:v('shop_url').value,active:v('active').checked,
+      file_key:fu?fu.querySelector('[data-key]').value:'',file_name:fu?fu.querySelector('[data-name]').value:'',sample_key:su?su.querySelector('[data-key]').value:''});
+    toast('Издание сохранено');books(b.id)}catch(e){toast(e.message)}};
+  const del=box.querySelector('[data-fdel]');if(del)del.onclick=async()=>{if(!confirm('Удалить издание?'))return;const r=await api('format-delete',{id});toast(r.hidden?'По изданию есть заявки — оно скрыто':'Издание удалено');books(b.id)}})}
+
+// ---------- Отрывки
+async function excerpts(edit){
+  const [{items},cat]=await Promise.all([api('excerpts'),api('books')]);const bt=Object.fromEntries(cat.items.map(b=>[b.id,b.title]));
+  const e=edit||{published:1,sort:0};
+  $('#view').innerHTML=`<div class="editor"><h2>${e.id?'Изменить отрывок':'Новый отрывок'}</h2><div class="form">
+  <label class="wide2">Заголовок<input id="x-title" value="${esc(e.title||'')}" placeholder="Глава 1. Литерный эшелон"></label>
+  <label>Книга<select id="x-book"><option value="">— без книги —</option>${cat.items.map(b=>`<option value="${esc(b.id)}" ${b.id===e.book_id?'selected':''}>${esc(b.title)}</option>`).join('')}</select></label>
+  <label>Порядок<input id="x-sort" type="number" value="${e.sort??0}"></label>
+  <label class="wide2">Текст — абзацы через пустую строку<textarea id="x-body" style="min-height:260px">${esc(e.body||'')}</textarea></label>
+  <label class="check"><input type="checkbox" id="x-pub" ${e.published?'checked':''}> Опубликован на сайте</label></div>
+  <div class="actions"><button class="btn primary" id="x-save">Сохранить</button>${e.id?'<button class="btn" id="x-new">Новый</button><button class="btn" id="x-del">Удалить</button>':''}</div></div>
+  <div class="tablewrap"><table><thead><tr><th>Отрывок</th><th>Книга</th><th>Знаков</th><th>На сайте</th><th></th></tr></thead><tbody>
+  ${items.map(x=>`<tr><td>${esc(x.title)}<div class="small muted">${esc(x.body.slice(0,140))}…</div></td><td>${esc(bt[x.book_id]||'—')}</td><td class="num">${x.body.length.toLocaleString('ru-RU')}</td><td>${x.published?'да':'<span class="muted">нет</span>'}</td><td><button class="btn small" data-xe="${x.id}">Изменить</button> <a class="btn small" href="/#excerpt-${x.id}" target="_blank">Открыть</a></td></tr>`).join('')||'<tr><td colspan="5" class="muted">Отрывков пока нет. Они появятся на сайте разделом «Отрывки» и кнопкой у книги.</td></tr>'}</tbody></table></div>`;
+  $('#x-save').onclick=async()=>{try{await api('excerpts',{id:e.id,title:$('#x-title').value,book_id:$('#x-book').value,sort:$('#x-sort').value,body:$('#x-body').value,published:$('#x-pub').checked});toast('Отрывок сохранён');excerpts()}catch(err){toast(err.message)}};
+  if(e.id){$('#x-new').onclick=()=>excerpts();$('#x-del').onclick=async()=>{if(!confirm('Удалить отрывок?'))return;await api('excerpt-delete',{id:e.id});toast('Удалено');excerpts()}}
+  document.querySelectorAll('[data-xe]').forEach(b=>b.onclick=()=>excerpts(items.find(x=>x.id===Number(b.dataset.xe))));
+}
+
+// ---------- Песни
+let POEMS=null;
+async function songs(edit){
+  const d=await api('songs');if(!POEMS)POEMS=(await api('poems')).items;
+  const e=edit||{published:1,sort:0};
+  $('#view').innerHTML=`${d.r2?'':'<div class="warnbox">R2 не включено — загрузить аудиофайл пока нельзя. Можно указать ссылку на песню во внешнем сервисе (Яндекс Музыка, VK, YouTube, облако).</div>'}
+  <div class="editor"><h2>${e.id?'Изменить песню':'Новая песня'}</h2><div class="form">
+  <label>Название песни<input id="s-title" value="${esc(e.title||'')}"></label>
+  <label>На стихи<input id="s-poem" list="poemList" value="${esc(e.poem||'')}" placeholder="начните вводить название"><datalist id="poemList">${POEMS.map(t=>`<option value="${esc(t)}">`).join('')}</datalist></label>
+  <label>Исполнитель<input id="s-perf" value="${esc(e.performer||'')}"></label>
+  <label>Музыка<input id="s-music" value="${esc(e.music_by||'')}"></label>
+  ${fileField('song','Аудиофайл (MP3, M4A, OGG — до 95 МБ)',e.file_key,e.file_name,'songs','audio/*',d.r2)}
+  <label class="wide2">Или ссылка на песню во внешнем сервисе<input id="s-ext" value="${esc(e.ext_url||'')}" placeholder="https://…"></label>
+  <label class="wide2">Короткое описание<input id="s-note" value="${esc(e.note||'')}"></label>
+  <label class="wide2">Текст песни<textarea id="s-lyr" style="min-height:180px">${esc(e.lyrics||'')}</textarea></label>
+  <label>Порядок<input id="s-sort" type="number" value="${e.sort??0}"></label>
+  <label class="check"><input type="checkbox" id="s-pub" ${e.published?'checked':''}> Опубликована на сайте</label></div>
+  <div class="actions"><button class="btn primary" id="s-save">Сохранить</button>${e.id?'<button class="btn" id="s-new">Новая</button><button class="btn" id="s-del">Удалить</button>':''}<a class="btn" href="/api/crm/export?t=songs">CSV</a></div></div>
+  <div class="tablewrap"><table><thead><tr><th>Песня</th><th>Аудио</th><th class="num">Прослушиваний</th><th class="num">Скачиваний</th><th>На сайте</th><th></th></tr></thead><tbody>
+  ${d.items.map(x=>`<tr><td>${esc(x.title)}${x.poem?`<div class="small muted">на стихи «${esc(x.poem)}»</div>`:''}</td><td>${x.file_key?`<audio controls preload="none" src="/song/${x.id}/play"></audio>`:x.ext_url?`<a href="${esc(x.ext_url)}" target="_blank" rel="noopener">ссылка</a>`:'<span class="muted">нет</span>'}</td><td class="num">${x.plays}</td><td class="num">${x.downloads}</td><td>${x.published?'да':'<span class="muted">нет</span>'}</td><td><button class="btn small" data-se="${x.id}">Изменить</button></td></tr>`).join('')||'<tr><td colspan="6" class="muted">Песен пока нет. Они появятся на сайте разделом «Песни» — с плеером, текстом и кнопкой «Скачать».</td></tr>'}</tbody></table></div>`;
+  const ed=$('.editor');bindUploads(ed);
+  $('#s-save').onclick=async()=>{try{await api('songs',{id:e.id,title:$('#s-title').value,poem:$('#s-poem').value,performer:$('#s-perf').value,music_by:$('#s-music').value,note:$('#s-note').value,lyrics:$('#s-lyr').value,ext_url:$('#s-ext').value,sort:$('#s-sort').value,published:$('#s-pub').checked,
+    file_key:upVal(ed,'song','key'),file_name:upVal(ed,'song','name'),file_size:upVal(ed,'song','size')});toast('Песня сохранена');songs()}catch(err){toast(err.message)}};
+  if(e.id){$('#s-new').onclick=()=>songs();$('#s-del').onclick=async()=>{if(!confirm('Удалить песню вместе с файлом?'))return;await api('song-delete',{id:e.id});toast('Удалено');songs()}}
+  document.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>songs(d.items.find(x=>x.id===Number(b.dataset.se))));
 }
 
 api('summary?days=1').then(start).catch(()=>{});

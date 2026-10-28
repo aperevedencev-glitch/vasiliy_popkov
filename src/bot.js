@@ -1,17 +1,16 @@
 // Telegram-бот: читатели и автор
-import catalog from "./catalog.json";
 import poems from "./poems.json";
 import { safeEqual, rub, track, today, setting, setSetting, STATUS } from "./util.js";
 import { tg, esc, adminChat, notifyAdmin } from "./telegram.js";
-import { createOrder, payAndDeliver, setStatus, orderKeyboard, orderText, getBook } from "./orders.js";
+import { createOrder, payAndDeliver, setStatus, orderKeyboard, orderText, getBook, orderFormat } from "./orders.js";
 
-const JAAJ = "https://jaaj.club/book.aspx?enname=romans&id=";
 
 const MENU = {
   keyboard: [
-    [{ text: "Книги" }, { text: "Купить EPUB" }],
-    [{ text: "Стих дня" }, { text: "Новинки" }],
-    [{ text: "Вопрос автору" }, { text: "Где купить" }],
+    [{ text: "Книги" }, { text: "Купить книгу" }],
+    [{ text: "Стих дня" }, { text: "Песни" }],
+    [{ text: "Новинки" }, { text: "Где купить" }],
+    [{ text: "Вопрос автору" }],
   ],
   resize_keyboard: true,
 };
@@ -29,16 +28,23 @@ function poemText(p) {
   return `<b>${esc(p.t)}</b>\n\n${esc(p.l.join("\n"))}\n\n<i>${esc(p.d)}</i>`;
 }
 
-function booksText() {
-  const series = catalog.filter((b) => b.s).sort((a, b) => a.s - b.s);
-  const romans = catalog.filter((b) => b.k === "roman" && !b.s);
-  const other = catalog.filter((b) => b.k !== "roman");
-  const line = (b) => `• <a href="${JAAJ}${b.id}">${esc(b.t)}</a> — ${esc(b.g.toLowerCase())}`;
+const site = (env) => (env.SITE_URL || "").replace(/\/$/, "");
+
+async function booksText(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT b.*, (SELECT GROUP_CONCAT(DISTINCT f.kind) FROM formats f WHERE f.book_id=b.id AND f.active=1) kinds FROM books b WHERE b.shown=1 ORDER BY b.sort, b.title"
+  ).all();
+  const link = (b) => (b.read_url ? `<a href="${esc(b.read_url)}">${esc(b.title)}</a>` : esc(b.title));
+  const marks = (b) => (b.kinds || "").split(",").filter(Boolean).map((k) => ({ ebook: "📱", print: "📖", audio: "🎧" }[k])).join("");
+  const line = (b) => `• ${link(b)}${b.genre ? " — " + esc(b.genre.toLowerCase()) : ""} ${marks(b)}`.trimEnd();
+  const series = results.filter((b) => b.series).sort((a, b) => Number(a.series) - Number(b.series));
+  const romans = results.filter((b) => b.kind === "roman" && !b.series);
+  const other = results.filter((b) => b.kind !== "roman");
   return (
-    "<b>Серия «Сокровища заброшенных усадеб»</b>\n" +
-    series.map((b) => `${b.s}. <a href="${JAAJ}${b.id}">${esc(b.t)}</a>`).join("\n") +
-    "\n\n<b>Романы</b>\n" + romans.map(line).join("\n") +
-    "\n\n<b>Рассказы, повести, стихи</b>\n" + other.map(line).join("\n")
+    (series.length ? "<b>Серия «Сокровища заброшенных усадеб»</b>\n" + series.map((b) => `${esc(b.series)}. ${link(b)} ${marks(b)}`.trimEnd()).join("\n") + "\n\n" : "") +
+    "<b>Романы</b>\n" + romans.map(line).join("\n") +
+    (other.length ? "\n\n<b>Рассказы, повести, стихи</b>\n" + other.map(line).join("\n") : "") +
+    "\n\n📱 электронная · 📖 печатная · 🎧 аудио"
   );
 }
 
@@ -48,11 +54,25 @@ const SHOPS =
   '• <a href="https://ridero.ru/books/catalog/?q=%D0%92%D0%B0%D1%81%D0%B8%D0%BB%D0%B8%D0%B9%20%D0%9F%D0%BE%D0%BF%D0%BA%D0%BE%D0%B2">Ridero</a> — печатные книги\n' +
   '• <a href="https://www.litres.ru/search/?q=%D0%92%D0%B0%D1%81%D0%B8%D0%BB%D0%B8%D0%B9%20%D0%9F%D0%BE%D0%BF%D0%BA%D0%BE%D0%B2">Литрес</a> — все электронные и аудиокниги\n' +
   '• <a href="https://www.wildberries.ru/catalog/0/search.aspx?search=%D0%92%D0%B0%D1%81%D0%B8%D0%BB%D0%B8%D0%B9%20%D0%9F%D0%BE%D0%BF%D0%BA%D0%BE%D0%B2">Wildberries</a>\n' +
-  '• <a href="https://proza.ru/avtor/petyavasechkin">Проза.ру</a> и <a href="https://stihi.ru/avtor/petyavasechkin">Стихи.ру</a>';
+  "• Электронные, печатные и аудиоверсии можно заказать у автора — кнопка «Купить книгу».";
 
-async function epubKeyboard(env) {
-  const { results } = await env.DB.prepare("SELECT id,title,price FROM books WHERE active=1 ORDER BY price DESC, title").all();
-  return results.map((b) => [{ text: `${b.title} — ${rub(b.price)}`, callback_data: `buy:${b.id}` }]);
+// что можно купить у автора прямо в боте: электронные и аудио (печатные — на сайте, нужен адрес)
+async function buyKeyboard(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT f.id, f.kind, f.label, f.price, b.title FROM formats f JOIN books b ON b.id=f.book_id
+     WHERE f.active=1 AND f.price>0 AND f.kind IN ('ebook','audio') AND b.shown=1 ORDER BY b.sort, f.sort`
+  ).all();
+  return results.map((f) => [{ text: `${f.kind === "audio" ? "🎧 " : ""}${f.title}${f.label ? " · " + f.label : ""} — ${rub(f.price)}`.slice(0, 64), callback_data: `bf:${f.id}` }]);
+}
+
+async function songsText(env) {
+  const { results } = await env.DB.prepare("SELECT id,title,poem,performer,file_key,ext_url FROM songs WHERE published=1 ORDER BY sort, id DESC LIMIT 30").all();
+  if (!results.length) return "Песен на стихи автора пока нет — подпишитесь на новинки, чтобы не пропустить.";
+  return "<b>Песни на стихи Василия Попкова</b>\n\n" + results.map((s) => {
+    const url = s.file_key ? `${site(env)}/song/${s.id}/download` : s.ext_url;
+    return `🎵 <b>${esc(s.title)}</b>${s.poem ? ` — на стихи «${esc(s.poem)}»` : ""}${s.performer ? `\nИсполняет: ${esc(s.performer)}` : ""}` +
+      (url ? `\n<a href="${esc(url)}">${s.file_key ? "Скачать" : "Слушать"}</a> · <a href="${site(env)}/#song-${s.id}">на сайте</a>` : "");
+  }).join("\n\n");
 }
 
 export async function handleUpdate(env, u) {
@@ -97,13 +117,13 @@ export async function handleUpdate(env, u) {
     }
     return send(env, chat,
       "Здравствуйте! Это бот писателя <b>Василия Попкова</b> — автора интеллектуальных триллеров и историко-детективных романов.\n\n" +
-      "Здесь можно посмотреть книги, купить электронную версию в EPUB, получить стих дня и подписаться на новинки.",
+      "Здесь можно посмотреть книги, купить электронную или аудиоверсию, послушать песни на стихи автора, получить стих дня и подписаться на новинки.",
       { reply_markup: MENU });
   }
 
   // ждём текст вопроса
   const waiting = await setting(env, `ask:${chat}`);
-  if (waiting && text && !["Книги", "Купить EPUB", "Стих дня", "Новинки", "Вопрос автору", "Где купить"].includes(text)) {
+  if (waiting && text && !["Книги", "Купить книгу", "Купить EPUB", "Стих дня", "Песни", "Новинки", "Вопрос автору", "Где купить"].includes(text)) {
     await env.DB.prepare("DELETE FROM settings WHERE k=?").bind(`ask:${chat}`).run();
     const name = [m.from.first_name, m.from.last_name].filter(Boolean).join(" ");
     const contact = m.from.username ? "@" + m.from.username : "";
@@ -118,7 +138,7 @@ export async function handleUpdate(env, u) {
   switch (text) {
     case "Книги":
       await track(env, "bot", "books");
-      return send(env, chat, booksText());
+      return send(env, chat, await booksText(env));
     case "Где купить":
       await track(env, "bot", "shops");
       return send(env, chat, SHOPS);
@@ -127,11 +147,18 @@ export async function handleUpdate(env, u) {
       await track(env, "poem", p.t);
       return send(env, chat, poemText(p), { reply_markup: { inline_keyboard: [[{ text: "Ещё стихотворение", callback_data: "poem:rnd" }]] } });
     }
-    case "Купить EPUB":
+    case "Купить книгу":
+    case "Купить EPUB": {
       await track(env, "bot", "buy");
-      return send(env, chat, "Выберите книгу. После подтверждения оплаты автор пришлёт её сюда в формате EPUB.", {
-        reply_markup: { inline_keyboard: await epubKeyboard(env) },
+      const kb = await buyKeyboard(env);
+      if (!kb.length) return send(env, chat, "Сейчас у автора нет книг для покупки в боте. Загляните в «Где купить».");
+      return send(env, chat, "Выберите книгу. После подтверждения оплаты автор пришлёт её сюда. Печатные книги заказываются на сайте — там можно указать адрес.", {
+        reply_markup: { inline_keyboard: kb },
       });
+    }
+    case "Песни":
+      await track(env, "bot", "songs");
+      return send(env, chat, await songsText(env));
     case "Новинки": {
       const s = await env.DB.prepare("SELECT active FROM subscribers WHERE chat_id=?").bind(chat).first();
       const on = s && s.active;
@@ -153,7 +180,7 @@ async function onCallback(env, q) {
   const admin = await adminChat(env);
   const answer = (text) => tg(env, "answerCallbackQuery", { callback_query_id: q.id, text });
 
-  if (["paid", "wait", "cancel"].includes(cmd)) {
+  if (["paid", "wait", "cancel", "sent"].includes(cmd)) {
     if (chat !== admin) return answer("Только для автора");
     const id = Number(arg);
     try {
@@ -161,15 +188,17 @@ async function onCallback(env, q) {
       if (cmd === "paid") {
         const r = await payAndDeliver(env, id);
         o = r.order;
-        note = r.delivered ? "Книга отправлена покупателю в Telegram." : `Покупатель не в боте. Отправьте ему ссылку:\n${r.url}`;
+        note = r.print ? "Оплата отмечена. После отправки книги нажмите «Книга отправлена»."
+          : r.nofile ? "Оплата отмечена. Файл книги не загружен в CRM — отправьте его покупателю сами."
+          : r.delivered ? "Книга отправлена покупателю в Telegram." : `Покупатель не в боте. Отправьте ему ссылку:\n${r.url}`;
       } else {
-        o = await setStatus(env, id, cmd === "wait" ? "waiting" : "cancelled");
+        o = await setStatus(env, id, cmd === "wait" ? "waiting" : cmd === "sent" ? "sent" : "cancelled");
       }
-      const b = await getBook(env, o.book_id);
+      const f = await orderFormat(env, o);
       await tg(env, "editMessageText", {
         chat_id: chat, message_id: q.message.message_id, parse_mode: "HTML", disable_web_page_preview: true,
-        text: orderText(o, b) + `\nСтатус: <b>${STATUS[o.status]}</b>` + (note ? `\n\n${esc(note)}` : ""),
-        reply_markup: { inline_keyboard: orderKeyboard(o) },
+        text: orderText(o, f) + `\nСтатус: <b>${STATUS[o.status]}</b>` + (note ? `\n\n${esc(note)}` : ""),
+        reply_markup: { inline_keyboard: orderKeyboard(o, f) },
       });
       return answer(STATUS[o.status]);
     } catch (e) {
@@ -177,15 +206,15 @@ async function onCallback(env, q) {
     }
   }
 
-  if (cmd === "buy") {
+  if (cmd === "buy" || cmd === "bf") {
     const name = [q.from.first_name, q.from.last_name].filter(Boolean).join(" ");
     try {
-      const { order, book } = await createOrder(env, {
-        book_id: arg, name, telegram: q.from.username ? "@" + q.from.username : "", chat_id: chat, source: "bot",
+      const { order, book, format } = await createOrder(env, {
+        ...(cmd === "bf" ? { format_id: Number(arg) } : { book_id: arg }), name, telegram: q.from.username ? "@" + q.from.username : "", chat_id: chat, source: "bot",
       });
       await answer("Заявка принята");
       return send(env, chat,
-        `Заявка №${order.id} на книгу «${esc(book.title)}» (${rub(book.price)}) принята. ` +
+        `Заявка №${order.id}: ${format.kind === "audio" ? "аудиокнига" : "книга"} «${esc(book.title)}» (${rub(order.price)}) принята. ` +
         "Автор свяжется с вами здесь, чтобы договориться об оплате, и после неё пришлёт книгу.");
     } catch (e) {
       return answer(e.message);
